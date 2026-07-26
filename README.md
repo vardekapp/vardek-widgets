@@ -1,7 +1,8 @@
 # Vardek Add-on Widgets
 
-Community / add-on widgets for [Vardek](https://vardek.app) — the macOS dashboard
-for the Corsair Xeneon Edge.
+Community / add-on widgets for **[Vardek](https://vardek.app)** — the macOS
+dashboard for the Corsair Xeneon Edge. Get the app first:
+[vardekapp/Vardek](https://github.com/vardekapp/Vardek) · [vardek.app](https://vardek.app).
 
 The Vardek app ships with a curated set of built-in widgets. This repo holds
 **add-on widgets** you can install *after the fact* — no app update, no rebuild.
@@ -12,7 +13,10 @@ widget folder in and rescanning is all it takes.
 
 | Widget | id | Size | What it does |
 |--------|----|------|--------------|
-| Day/Night Map | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
+| [Day/Night Map](com.vardek.day-night/) | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
+
+### Day/Night Map
+[![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
 
 ## Install
 
