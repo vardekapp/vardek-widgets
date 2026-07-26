@@ -125,11 +125,11 @@
     // ---- Main row: HH : MM (big seven-seg) ----
     let h = now.getHours();
     if (!cfg.use24Hour) { h = h % 12; if (h === 0) h = 12; }
-    const hh = String(h).padStart(2, "0");
+    const hh = String(h).padStart(2, cfg.use24Hour ? "0" : " ");
     const mm = String(now.getMinutes()).padStart(2, "0");
 
-    const bigH = 300, bigY = 250;
-    let x = 120;
+    const bigH = 260, bigY = 250;
+    let x = 100;
     x = drawSegString(hh, x, bigY, bigH, theme);
     const colonVisible = !cfg.blinkColon || now.getMilliseconds() < 500;
     drawColon(x + 20, bigY + bigH / 2, 16, theme, colonVisible);
@@ -137,7 +137,7 @@
 
     // ---- Seconds (smaller seven-seg, lower-right) ----
     const ss = String(now.getSeconds()).padStart(2, "0");
-    drawSegString(ss, 980, 400, 150, theme);
+    drawSegString(ss, 1000, 380, 130, theme);
 
     ctx.shadowBlur = 0;
   }
