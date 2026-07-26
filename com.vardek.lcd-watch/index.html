@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #face { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="face" width="1280" height="640"></canvas>
+<script src="sevenseg.js"></script>
+<script>
+  const W = 1280, H = 640;
+  const ctx = document.getElementById("face").getContext("2d");
+
+  const defaults = { use24Hour: true, blinkColon: true, backlight: false, ghostSegments: true };
+  let cfg = defaults;
+
+  const THEMES = {
+    lcd:     { panel: "#c5c8b8", digit: "#20241c", ghost: 0.12, glow: 0 },
+    backlit: { panel: "#0d1a17", digit: "#5ffbe0", ghost: 0.10, glow: 24 },
+  };
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // Fill one seven-segment digit inside box (x,y,w,h). Lit segments in the digit
+  // color; unlit drawn faintly when ghostSegments is on.
+  function drawDigit(char, x, y, w, h, theme) {
+    const segs = globalThis.SevenSeg.segmentsFor(char);
+    const t = Math.min(w, h) * 0.16;      // segment thickness
+    const xL = x + t * 0.5, xR = x + w - t * 0.5;
+    const yT = y + t * 0.5, yM = y + h / 2, yB = y + h - t * 0.5;
+    const gap = t * 0.4;
+
+    const poly = (pts) => {
+      ctx.beginPath();
+      pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      ctx.fill();
+    };
+    // horizontal bar centered on cy, spanning xL..xR
+    const hbar = (cy) => poly([
+      [xL + gap, cy], [xL + gap + t / 2, cy - t / 2], [xR - gap - t / 2, cy - t / 2],
+      [xR - gap, cy], [xR - gap - t / 2, cy + t / 2], [xL + gap + t / 2, cy + t / 2],
+    ]);
+    // vertical bar centered on cx, spanning cy0..cy1
+    const vbar = (cx, cy0, cy1) => poly([
+      [cx, cy0 + gap], [cx + t / 2, cy0 + gap + t / 2], [cx + t / 2, cy1 - gap - t / 2],
+      [cx, cy1 - gap], [cx - t / 2, cy1 - gap - t / 2], [cx - t / 2, cy0 + gap + t / 2],
+    ]);
+    const drawSeg = { a: () => hbar(yT), d: () => hbar(yB), g: () => hbar(yM),
+      f: () => vbar(xL, yT, yM), b: () => vbar(xR, yT, yM),
+      e: () => vbar(xL, yM, yB), c: () => vbar(xR, yM, yB) };
+
+    for (const key of ["a", "b", "c", "d", "e", "f", "g"]) {
+      if (segs[key]) {
+        ctx.globalAlpha = 1;
+        drawSeg[key]();
+      } else if (cfg.ghostSegments) {
+        ctx.globalAlpha = theme.ghost;
+        drawSeg[key]();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw a string of digits / '-' left-to-right from startX; returns end x.
+  function drawSegString(str, startX, y, digitH, theme) {
+    const dw = digitH * 0.60, gap = digitH * 0.22;
+    let cx = startX;
+    for (const ch of str) {
+      drawDigit(ch, cx, y, dw, digitH, theme);
+      cx += dw + gap;
+    }
+    return cx;
+  }
+
+  function drawColon(cx, cy, r, theme, visible) {
+    ctx.globalAlpha = visible ? 1 : theme.ghost;
+    ctx.beginPath(); ctx.arc(cx, cy - r * 2, r, 0, 2 * Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy + r * 2, r, 0, 2 * Math.PI); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+  function draw() {
+    const theme = cfg.backlight ? THEMES.backlit : THEMES.lcd;
+    const now = new Date();
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Panel
+    roundRect(40, 40, W - 80, H - 80, 44);
+    ctx.fillStyle = theme.panel; ctx.fill();
+
+    ctx.fillStyle = theme.digit;
+    ctx.shadowColor = theme.digit;
+    ctx.shadowBlur = theme.glow;
+
+    // ---- Top row: weekday (block text) + month-day (seven-seg) + AM/PM ----
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.font = "bold 72px 'Arial Narrow', Arial, sans-serif";
+    ctx.fillText(WEEKDAYS[now.getDay()], 110, 150);
+
+    const monthDay = `${now.getMonth() + 1}-${String(now.getDate()).padStart(2, "0")}`;
+    drawSegString(monthDay, 560, 108, 84, theme);
+
+    if (!cfg.use24Hour) {
+      ctx.textAlign = "right";
+      ctx.font = "bold 46px 'Arial Narrow', Arial, sans-serif";
+      ctx.fillText(now.getHours() < 12 ? "AM" : "PM", W - 110, 130);
+    }
+
+    // ---- Main row: HH : MM (big seven-seg) ----
+    let h = now.getHours();
+    if (!cfg.use24Hour) { h = h % 12; if (h === 0) h = 12; }
+    const hh = String(h).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+
+    const bigH = 300, bigY = 250;
+    let x = 120;
+    x = drawSegString(hh, x, bigY, bigH, theme);
+    const colonVisible = !cfg.blinkColon || now.getMilliseconds() < 500;
+    drawColon(x + 20, bigY + bigH / 2, 16, theme, colonVisible);
+    x = drawSegString(mm, x + 72, bigY, bigH, theme);
+
+    // ---- Seconds (smaller seven-seg, lower-right) ----
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    drawSegString(ss, 980, 400, 150, theme);
+
+    ctx.shadowBlur = 0;
+  }
+
+  document.addEventListener("vardek:ready", () => {
+    cfg = Object.assign({}, defaults, window.Vardek ? Vardek.settings : {});
+    draw();
+  });
+  draw();
+  setInterval(draw, 250);
+</script>
+</body>
+</html>

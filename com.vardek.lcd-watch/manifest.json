@@ -1,0 +1,15 @@
+{
+  "id": "com.vardek.lcd-watch",
+  "name": "LCD Watch",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "subscriptions": [],
+  "sizes": [ { "cols": 4, "rows": 2 }, { "cols": 2, "rows": 1 } ],
+  "canvas": { "width": 1280, "height": 640 },
+  "settingsSchema": {
+    "use24Hour":     { "type": "boolean", "label": "24-hour clock", "default": true },
+    "blinkColon":    { "type": "boolean", "label": "Blinking colon", "default": true },
+    "backlight":     { "type": "boolean", "label": "Backlight",      "default": false },
+    "ghostSegments": { "type": "boolean", "label": "Ghost segments", "default": true }
+  }
+}
