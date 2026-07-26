@@ -1,0 +1,14 @@
+{
+  "id": "com.vardek.day-night",
+  "name": "Day/Night Map",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "settingsSchema": {
+    "use24Hour":    { "type": "boolean", "label": "24-hour clock",     "default": true },
+    "showLand":     { "type": "boolean", "label": "Show coastlines",   "default": true },
+    "showTwilight": { "type": "boolean", "label": "Twilight gradient",  "default": true }
+  }
+}

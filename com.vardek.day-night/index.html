@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #map { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="map" width="2560" height="720"></canvas>
+<script src="solar.js"></script>
+<script src="land.js"></script>
+<script>
+  const W = 2560, H = 720;
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+
+  const defaults = { use24Hour: true, showLand: true, showTwilight: true };
+  let cfg = defaults;
+
+  const project = (lon, lat) => ({ x: (lon + 180) / 360 * W, y: (90 - lat) / 180 * H });
+
+  function drawOcean() {
+    ctx.fillStyle = "#0b0e1a";
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawLand() {
+    if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
+    ctx.fillStyle = "#243049";
+    ctx.strokeStyle = "#3a4a6b";
+    ctx.lineWidth = 1;
+    for (const ring of globalThis.LAND) {
+      ctx.beginPath();
+      ring.forEach(([lon, lat], i) => {
+        const p = project(lon, lat);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Per-pixel night overlay on an offscreen canvas, composited with alpha.
+  // ponytail: O(W*H) per minute (~1.8M px). Swap to a terminator polygon only if redraw cost shows up.
+  const off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  const offCtx = off.getContext("2d");
+  const img = offCtx.createImageData(W, H);
+
+  function drawNight(sub) {
+    const data = img.data;
+    for (let py = 0; py < H; py++) {
+      const lat = 90 - (py / H) * 180;
+      for (let px = 0; px < W; px++) {
+        const lon = (px / W) * 360 - 180;
+        const cz = globalThis.Solar.cosZenith(lat, lon, sub);
+        let a = 0;
+        if (cz < -0.1) a = 190;                                  // full night
+        else if (cz < 0.1 && cfg.showTwilight) a = 190 * (0.1 - cz) / 0.2; // twilight band
+        else if (cz < 0) a = 190;                                // hard edge when twilight off
+        const idx = (py * W + px) * 4;
+        data[idx] = 5; data[idx + 1] = 8; data[idx + 2] = 18; data[idx + 3] = a;
+      }
+    }
+    offCtx.putImageData(img, 0, 0);
+    ctx.drawImage(off, 0, 0);
+  }
+
+  function drawSun(sub) {
+    const p = project(sub.lon, sub.lat);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    ctx.fillStyle = "#ffcc66";
+    ctx.shadowColor = "#ffcc66";
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawTicks(now) {
+    ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.textAlign = "center";
+    const utcMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+    // Map spans exactly -180..+180 = UTC offsets -12..+12; +13/+14 are off-map political zones.
+    for (let offset = -12; offset <= 12; offset++) {
+      const lon = offset * 15;
+      const x = (lon + 180) / 360 * W;
+      ctx.strokeStyle = "rgba(122,162,247,0.18)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+
+      let local = (utcMin + offset * 60) % 1440; if (local < 0) local += 1440;
+      let hh = Math.floor(local / 60), mm = local % 60;
+      let label;
+      if (cfg.use24Hour) {
+        label = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      } else {
+        const ap = hh < 12 ? "AM" : "PM"; let h12 = hh % 12; if (h12 === 0) h12 = 12;
+        label = `${h12}:${String(mm).padStart(2, "0")} ${ap}`;
+      }
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText(label, Math.min(Math.max(x, 40), W - 40), 30);
+      ctx.fillStyle = "#5a6688";
+      ctx.fillText(`UTC${offset >= 0 ? "+" : ""}${offset}`, Math.min(Math.max(x, 40), W - 40), H - 16);
+    }
+  }
+
+  function draw() {
+    const now = new Date();
+    const sub = globalThis.Solar.subsolarPoint(now);
+    drawOcean();
+    drawLand();
+    drawNight(sub);
+    drawSun(sub);
+    drawTicks(now);
+  }
+
+  document.addEventListener("vardek:ready", () => {
+    cfg = Object.assign({}, defaults, window.Vardek ? Vardek.settings : {});
+    draw();
+  });
+  draw();
+  setInterval(draw, 60_000);
+</script>
+</body>
+</html>
