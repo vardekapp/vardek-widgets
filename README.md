@@ -14,9 +14,13 @@ widget folder in and rescanning is all it takes.
 | Widget | id | Size | What it does |
 |--------|----|------|--------------|
 | [Day/Night Map](com.vardek.day-night/) | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
+| [LCD Watch](com.vardek.lcd-watch/) | `com.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
 
 ### Day/Night Map
 [![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
+
+### LCD Watch
+[![LCD Watch widget](com.vardek.lcd-watch/lcdclock.png)](com.vardek.lcd-watch/)
 
 ## Install
 

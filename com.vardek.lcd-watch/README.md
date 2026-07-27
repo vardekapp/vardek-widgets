@@ -4,6 +4,8 @@ A retro digital-watch clock in the style of the Casio F-91W — green-grey LCD,
 seven-segment numerals with ghost segments, weekday + date, big HH:MM, ticking
 seconds, and a blinking colon. Local clock only, no network.
 
+![LCD Watch widget](lcdclock.png)
+
 ## Settings
 
 | Key             | Type    | Default | Description                                   |
