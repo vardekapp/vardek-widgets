@@ -43,6 +43,15 @@
     const n = bars.length;
     if (n === 0) return;
 
+    // Per-bar colors: key → {main, dark}
+    const colorMap = {
+      life:  { main: "#ffcc66", dark: "#d4a444" },
+      year:  { main: "#7aa2f7", dark: "#5a7cc7" },
+      month: { main: "#3ad16b", dark: "#2a9a4b" },
+      week:  { main: "#bf5af2", dark: "#8f3ac2" },
+      day:   { main: "#5ac8fa", dark: "#3a98ca" }
+    };
+
     const rowH = H / n;
     const padX = 48;
     const labelW = 220;
@@ -53,6 +62,7 @@
 
     bars.forEach((bar, i) => {
       const cy = rowH * i + rowH / 2;
+      const colors = colorMap[bar.key] || { main: "#7aa2f7", dark: "#5a7cc7" };
 
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
@@ -65,11 +75,32 @@
       roundRect(trackX, trackY, trackW, trackH, trackH / 2);
       ctx.fill();
 
+      // Track top highlight
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(trackX + trackH / 2, trackY + 1);
+      ctx.lineTo(trackX + trackW - trackH / 2, trackY + 1);
+      ctx.stroke();
+
       const fillW = Math.max(trackH, trackW * bar.fraction);
       if (bar.fraction > 0) {
-        ctx.fillStyle = "#7aa2f7";
+        // Gradient from dark to main color (horizontal)
+        const gradient = ctx.createLinearGradient(trackX, 0, trackX + fillW, 0);
+        gradient.addColorStop(0, colors.dark);
+        gradient.addColorStop(1, colors.main);
+
+        // Soft glow
+        ctx.shadowColor = colors.main;
+        ctx.shadowBlur = 5;
+
+        ctx.fillStyle = gradient;
         roundRect(trackX, trackY, fillW, trackH, trackH / 2);
         ctx.fill();
+
+        // Reset shadow
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
       }
 
       ctx.textAlign = "right";
