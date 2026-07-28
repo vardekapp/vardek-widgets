@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #map { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="map" width="2560" height="720"></canvas>
+<script src="land.js"></script>
+<script src="iss.js"></script>
+<script type="module">
+  import { xemd } from '/sdk/widget-sdk.js';
+
+  const W = 2560, H = 720;
+  const URL = "https://api.wheretheiss.at/v1/satellites/25544";
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  const { project, issMarker } = globalThis.ISS;
+
+  const defaults = { showLand: true, showTrail: true, units: "km" };
+  let cfg = defaults;
+  let marker = null;
+  let errorMsg = null;
+  const trail = [];
+
+  function drawOcean() {
+    ctx.fillStyle = "#0b0e1a";
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawLand() {
+    if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
+    ctx.fillStyle = "#243049";
+    ctx.strokeStyle = "#3a4a6b";
+    ctx.lineWidth = 1;
+    for (const ring of globalThis.LAND) {
+      ctx.beginPath();
+      ring.forEach(([lon, lat], i) => {
+        const p = project(lon, lat, W, H);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawTrail() {
+    if (!cfg.showTrail || trail.length < 2) return;
+    ctx.strokeStyle = "rgba(255,204,102,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let prev = null;
+    for (const pt of trail) {
+      const p = project(pt.lon, pt.lat, W, H);
+      if (prev && Math.abs(p.x - prev.x) > W / 2) {
+        // Wraps across the +/-180 seam — start a new segment instead of connecting.
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      } else if (!prev) {
+        ctx.moveTo(p.x, p.y);
+      } else {
+        ctx.lineTo(p.x, p.y);
+      }
+      prev = p;
+    }
+    ctx.stroke();
+  }
+
+  function drawIss() {
+    if (!marker) return;
+    const p = project(marker.lon, marker.lat, W, H);
+    ctx.save();
+    ctx.shadowColor = "#ffcc66";
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#ffcc66";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawReadout() {
+    ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.textAlign = "left";
+    if (errorMsg && !marker) {
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText(`ISS Tracker — ${errorMsg}`, 16, 28);
+      return;
+    }
+    if (!marker) {
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText("ISS Tracker — acquiring position…", 16, 28);
+      return;
+    }
+    const mi = cfg.units === "mi";
+    const alt = mi ? marker.altKm * 0.621371 : marker.altKm;
+    const vel = mi ? marker.velKmh * 0.621371 : marker.velKmh;
+    const distUnit = mi ? "mi" : "km";
+    const velUnit = mi ? "mph" : "km/h";
+    ctx.fillStyle = "#e6e9ef";
+    ctx.fillText(
+      `ISS — lat ${marker.lat.toFixed(2)}, lon ${marker.lon.toFixed(2)} · alt ${alt.toFixed(0)} ${distUnit} · vel ${vel.toFixed(0)} ${velUnit}`,
+      16, 28
+    );
+    if (errorMsg) {
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText(errorMsg, 16, 50);
+    }
+  }
+
+  function draw() {
+    drawOcean();
+    drawLand();
+    drawTrail();
+    drawIss();
+    drawReadout();
+  }
+
+  async function refresh() {
+    try {
+      const res = await xemd.proxy.fetch(URL);
+      if (res.ok) {
+        const m = issMarker(await res.json());
+        if (m) {
+          marker = m;
+          trail.push({ lat: m.lat, lon: m.lon });
+          if (trail.length > 60) trail.shift();
+          errorMsg = null;
+        } else {
+          errorMsg = "bad position data";
+        }
+      } else {
+        errorMsg = `HTTP ${res.status}`;
+      }
+    } catch (err) {
+      errorMsg = err && err.message ? err.message : "fetch failed";
+    }
+    draw();
+  }
+
+  // Draw an initial ocean+land map immediately so the widget is never blank.
+  draw();
+
+  xemd.settings.get().then(s => {
+    cfg = Object.assign({}, defaults, s);
+    draw();
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange(s => {
+    cfg = Object.assign({}, defaults, s);
+    draw();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>

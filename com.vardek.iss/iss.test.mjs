@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import "./iss.js";
+const { project, issMarker } = globalThis.ISS;
+assert.deepEqual(project(-180,90,2560,720), {x:0,y:0});
+assert.deepEqual(project(180,-90,2560,720), {x:2560,y:720});
+const m = issMarker({latitude:-11.05, longitude:60.32, altitude:426.0, velocity:27554.4});
+assert.deepEqual(m, {lat:-11.05, lon:60.32, altKm:426.0, velKmh:27554.4});
+assert.equal(issMarker({latitude:"x", longitude:5}), null, "bad lat -> null");
+assert.equal(issMarker({}), null, "empty -> null");
+console.log("iss.test.mjs OK");
