@@ -69,12 +69,12 @@
     ctx.fillStyle = "#e6e9ef";
     ctx.textBaseline = "alphabetic";
     ctx.font = "bold 25px -apple-system, 'Helvetica Neue', sans-serif";
-    ctx.fillText("Upcoming Launches", 24, 38);
+    ctx.fillText("Upcoming Space Launches", 24, 38);
     ctx.strokeStyle = "#7aa2f7";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(24, 46);
-    ctx.lineTo(24 + ctx.measureText("Upcoming Launches").width, 46);
+    ctx.lineTo(24 + ctx.measureText("Upcoming Space Launches").width, 46);
     ctx.stroke();
 
     if (loading && launches.length === 0) {
