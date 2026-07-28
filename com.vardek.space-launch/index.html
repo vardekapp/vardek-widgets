@@ -20,7 +20,7 @@
 
   const ACCENTS = ["#7aa2f7", "#3ad16b", "#ffd60a", "#ff9f0a", "#bf5af2", "#5ac8fa"];
 
-  const defaults = { count: "8" };
+  const defaults = { count: "5" };
   let cfg = Object.assign({}, defaults);
   let launches = [];
   let errorMsg = null;
@@ -67,13 +67,14 @@
 
     ctx.textAlign = "left";
     ctx.fillStyle = "#e6e9ef";
-    ctx.font = "bold 22px -apple-system, 'Helvetica Neue', sans-serif";
-    ctx.fillText("Upcoming Launches", 24, 34);
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 25px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.fillText("Upcoming Launches", 24, 38);
     ctx.strokeStyle = "#7aa2f7";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(24, 42);
-    ctx.lineTo(24 + ctx.measureText("Upcoming Launches").width, 42);
+    ctx.moveTo(24, 46);
+    ctx.lineTo(24 + ctx.measureText("Upcoming Launches").width, 46);
     ctx.stroke();
 
     if (loading && launches.length === 0) {
@@ -90,16 +91,16 @@
       return;
     }
 
-    const count = parseInt(cfg.count) || 8;
+    const count = parseInt(cfg.count) || 5;
     const rows = Math.min(launches.length, count);
-    const top = 56;
+    const top = 62;
     const rowH = (H - top) / rows;
-    const nameSize = rowH >= 70 ? 21 : rowH >= 50 ? 18 : 15;
-    const subSize = rowH >= 70 ? 14 : 12;
-    const cdSize = rowH >= 70 ? 22 : rowH >= 50 ? 19 : 15;
-    const accentW = 5;
-    const textX = 24 + accentW + 10;
-    const cdColW = rowH >= 70 ? 120 : 96;
+    const nameSize = rowH >= 110 ? 30 : rowH >= 80 ? 25 : rowH >= 58 ? 20 : 16;
+    const subSize  = rowH >= 110 ? 19 : rowH >= 80 ? 16 : 13;
+    const cdSize   = rowH >= 110 ? 34 : rowH >= 80 ? 27 : rowH >= 58 ? 21 : 16;
+    const accentW = 6;
+    const textX = 24 + accentW + 14;
+    const cdColW = rowH >= 110 ? 165 : rowH >= 80 ? 132 : 104;
     const cdX = W - 24;
     const textMaxW = cdX - cdColW - textX;
 
@@ -122,21 +123,23 @@
       ctx.fillRect(24, rowY + 4, accentW, rowH - 8);
 
       ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
       ctx.fillStyle = "#e6e9ef";
-      ctx.font = `${nameSize}px -apple-system, 'Helvetica Neue', sans-serif`;
-      ctx.fillText("🚀 " + truncate(l.name, textMaxW - 26), textX, midY - subSize / 2);
+      ctx.font = `600 ${nameSize}px -apple-system, 'Helvetica Neue', sans-serif`;
+      ctx.fillText("🚀 " + truncate(l.name, textMaxW - (nameSize + 10)), textX, midY - rowH * 0.11);
 
-      ctx.fillStyle = "#8089a6";
+      ctx.fillStyle = "#aab3d0";
       ctx.font = `${subSize}px -apple-system, 'Helvetica Neue', sans-serif`;
       const sub = [l.provider, l.pad].filter(Boolean).join(" · ");
-      ctx.fillText(truncate(sub, textMaxW), textX, midY + subSize + 2);
+      ctx.fillText(truncate(sub, textMaxW), textX, midY + rowH * 0.22);
 
       const remaining = l.netMs - Date.now();
       const cd = formatCountdown(remaining);
       ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
       ctx.font = `bold ${cdSize}px -apple-system, 'Helvetica Neue', sans-serif`;
       ctx.fillStyle = countdownColor(remaining);
-      ctx.fillText(cd, cdX, midY + cdSize / 3);
+      ctx.fillText(cd, cdX, midY);
     }
 
     if (errorMsg) {
