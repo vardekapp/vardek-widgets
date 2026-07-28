@@ -10,21 +10,26 @@
 <body>
 <canvas id="map" width="2560" height="720"></canvas>
 <script src="land.js"></script>
+<script src="satellite.min.js"></script>
 <script src="iss.js"></script>
 <script type="module">
   import { xemd } from '/sdk/widget-sdk.js';
 
   const W = 2560, H = 720;
-  const URL = "https://api.wheretheiss.at/v1/satellites/25544";
+  const TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle";
+  const TRAIL_MS = 45 * 60000;
+  const PROJECTION_MS = 90 * 60000;
+  const STEP_MS = 60000;
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d");
-  const { project, issMarker } = globalThis.ISS;
+  const { project, parseTLE, subpoint, groundTrack } = globalThis.ISS;
 
-  const defaults = { showLand: true, showTrail: true, units: "km" };
+  const defaults = { showLand: true, showTrail: true, showProjection: true, units: "km" };
   let cfg = defaults;
-  let marker = null;
+  let satrec = null;
+  let current = null;
   let errorMsg = null;
-  const trail = [];
+  let tickHandle = null;
 
   function drawOcean() {
     ctx.fillStyle = "#0b0e1a";
@@ -48,13 +53,15 @@
     }
   }
 
-  function drawTrail() {
-    if (!cfg.showTrail || trail.length < 2) return;
-    ctx.strokeStyle = "rgba(255,204,102,0.35)";
-    ctx.lineWidth = 2;
+  function drawPath(points, strokeStyle, lineWidth, dash) {
+    if (points.length < 2) return;
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash(dash || []);
     ctx.beginPath();
     let prev = null;
-    for (const pt of trail) {
+    for (const pt of points) {
       const p = project(pt.lon, pt.lat, W, H);
       if (prev && Math.abs(p.x - prev.x) > W / 2) {
         // Wraps across the +/-180 seam — start a new segment instead of connecting.
@@ -69,42 +76,64 @@
       prev = p;
     }
     ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTrail(now) {
+    if (!cfg.showTrail || !satrec) return;
+    drawPath(groundTrack(satrec, now - TRAIL_MS, now, STEP_MS), "rgba(255,204,102,0.35)", 2);
+  }
+
+  function drawProjection(now) {
+    if (!cfg.showProjection || !satrec) return;
+    drawPath(groundTrack(satrec, now, now + PROJECTION_MS, STEP_MS), "rgba(140,190,255,0.45)", 2, [6, 6]);
   }
 
   function drawIss() {
-    if (!marker) return;
-    const p = project(marker.lon, marker.lat, W, H);
+    if (!current) return;
+    const p = project(current.lon, current.lat, W, H);
     ctx.save();
     ctx.shadowColor = "#ffcc66";
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = "#ffcc66";
+    ctx.shadowBlur = 16;
+    // Central body
+    ctx.fillStyle = "#e6e9ef";
+    const bodyW = 14, bodyH = 10;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
+    ctx.roundRect(p.x - bodyW / 2, p.y - bodyH / 2, bodyW, bodyH, 3);
     ctx.fill();
+    // Solar panel wings
+    ctx.fillStyle = "#ffcc66";
+    const wingW = 12, wingH = 22;
+    ctx.fillRect(p.x - bodyW / 2 - wingW - 2, p.y - wingH / 2, wingW, wingH);
+    ctx.fillRect(p.x + bodyW / 2 + 2, p.y - wingH / 2, wingW, wingH);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x - bodyW / 2 - wingW - 2, p.y - wingH / 2, wingW, wingH);
+    ctx.strokeRect(p.x + bodyW / 2 + 2, p.y - wingH / 2, wingW, wingH);
     ctx.restore();
   }
 
   function drawReadout() {
     ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
     ctx.textAlign = "left";
-    if (errorMsg && !marker) {
+    if (errorMsg && !current) {
       ctx.fillStyle = "#8089a6";
       ctx.fillText(`ISS Tracker — ${errorMsg}`, 16, 28);
       return;
     }
-    if (!marker) {
+    if (!current) {
       ctx.fillStyle = "#8089a6";
-      ctx.fillText("ISS Tracker — acquiring position…", 16, 28);
+      ctx.fillText("ISS Tracker — acquiring TLE…", 16, 28);
       return;
     }
     const mi = cfg.units === "mi";
-    const alt = mi ? marker.altKm * 0.621371 : marker.altKm;
-    const vel = mi ? marker.velKmh * 0.621371 : marker.velKmh;
+    const alt = mi ? current.altKm * 0.621371 : current.altKm;
+    const vel = mi ? current.velKmh * 0.621371 : current.velKmh;
     const distUnit = mi ? "mi" : "km";
     const velUnit = mi ? "mph" : "km/h";
     ctx.fillStyle = "#e6e9ef";
     ctx.fillText(
-      `ISS — lat ${marker.lat.toFixed(2)}, lon ${marker.lon.toFixed(2)} · alt ${alt.toFixed(0)} ${distUnit} · vel ${vel.toFixed(0)} ${velUnit}`,
+      `ISS — lat ${current.lat.toFixed(2)}, lon ${current.lon.toFixed(2)} · alt ${alt.toFixed(0)} ${distUnit} · vel ${vel.toFixed(0)} ${velUnit}`,
       16, 28
     );
     if (errorMsg) {
@@ -114,25 +143,32 @@
   }
 
   function draw() {
+    const now = Date.now();
     drawOcean();
     drawLand();
-    drawTrail();
+    drawTrail(now);
+    drawProjection(now);
     drawIss();
     drawReadout();
   }
 
-  async function refresh() {
+  function tick() {
+    if (satrec) {
+      current = subpoint(satrec, new Date());
+    }
+    draw();
+  }
+
+  async function fetchTLE() {
     try {
-      const res = await xemd.proxy.fetch(URL);
+      const res = await xemd.proxy.fetch(TLE_URL);
       if (res.ok) {
-        const m = issMarker(await res.json());
-        if (m) {
-          marker = m;
-          trail.push({ lat: m.lat, lon: m.lon });
-          if (trail.length > 60) trail.shift();
+        const tle = parseTLE(await res.text());
+        if (tle) {
+          satrec = globalThis.satellite.twoline2satrec(tle.l1, tle.l2);
           errorMsg = null;
         } else {
-          errorMsg = "bad position data";
+          errorMsg = "bad TLE data";
         }
       } else {
         errorMsg = `HTTP ${res.status}`;
@@ -140,7 +176,7 @@
     } catch (err) {
       errorMsg = err && err.message ? err.message : "fetch failed";
     }
-    draw();
+    tick();
   }
 
   // Draw an initial ocean+land map immediately so the widget is never blank.
@@ -149,10 +185,12 @@
   xemd.settings.get().then(s => {
     cfg = Object.assign({}, defaults, s);
     draw();
-    refresh();
+    fetchTLE();
   });
 
-  xemd.onRefresh(refresh);
+  if (!tickHandle) tickHandle = setInterval(tick, 1000);
+
+  xemd.onRefresh(fetchTLE);
   xemd.onSettingsChange(s => {
     cfg = Object.assign({}, defaults, s);
     draw();
