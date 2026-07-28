@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #map { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="map" width="2560" height="720"></canvas>
+<script src="land.js"></script>
+<script src="quakes.js"></script>
+<script type="module">
+  import { xemd } from '/sdk/widget-sdk.js';
+
+  const W = 2560, H = 720;
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  const { parseQuakes, magRadius, project } = globalThis.Quakes;
+
+  const defaults = { minMagnitude: "2.5", window: "24h", showLand: true };
+  let cfg = defaults;
+  let quakes = [];
+  let errorMsg = null;
+
+  function drawOcean() {
+    ctx.fillStyle = "#0b0e1a";
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawLand() {
+    if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
+    ctx.fillStyle = "#243049";
+    ctx.strokeStyle = "#3a4a6b";
+    ctx.lineWidth = 1;
+    for (const ring of globalThis.LAND) {
+      ctx.beginPath();
+      ring.forEach(([lon, lat], i) => {
+        const p = project(lon, lat, W, H);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Amber (low magnitude) -> red (high magnitude), clamped to [0, 8].
+  function magColor(mag) {
+    const t = Math.max(0, Math.min(1, mag / 8));
+    const r = Math.round(255);
+    const g = Math.round(204 - t * (204 - 90));
+    const b = Math.round(102 - t * (102 - 90));
+    return `rgba(${r},${g},${b},0.75)`;
+  }
+
+  function drawQuakes() {
+    for (const q of quakes) {
+      const p = project(q.lon, q.lat, W, H);
+      const r = magRadius(q.mag);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = magColor(q.mag);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  function drawLegend() {
+    ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#e6e9ef";
+    const label = errorMsg
+      ? `Earthquake Monitor — ${errorMsg}`
+      : `${quakes.length} quakes · M${cfg.minMagnitude}+ · last ${cfg.window}`;
+    ctx.fillText(label, 16, 28);
+  }
+
+  function draw() {
+    drawOcean();
+    drawLand();
+    drawQuakes();
+    drawLegend();
+  }
+
+  function buildUrl() {
+    const winMs = cfg.window === "7d" ? 7 * 864e5 : 864e5;
+    const start = new Date(Date.now() - winMs).toISOString();
+    return "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=" +
+      start + "&minmagnitude=" + parseFloat(cfg.minMagnitude) + "&limit=500&orderby=time";
+  }
+
+  async function refresh() {
+    try {
+      const res = await xemd.proxy.fetch(buildUrl());
+      if (res.ok) {
+        quakes = parseQuakes(await res.json());
+        errorMsg = null;
+      } else {
+        errorMsg = `HTTP ${res.status}`;
+      }
+    } catch (err) {
+      errorMsg = err && err.message ? err.message : "fetch failed";
+    }
+    draw();
+  }
+
+  // Draw an initial empty map immediately so the widget is never blank.
+  draw();
+
+  xemd.settings.get().then(s => {
+    cfg = Object.assign({}, defaults, s);
+    draw();
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange(s => {
+    cfg = Object.assign({}, defaults, s);
+    draw();
+    refresh();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>

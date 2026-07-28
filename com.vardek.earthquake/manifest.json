@@ -1,0 +1,16 @@
+{
+  "id": "com.vardek.earthquake",
+  "name": "Earthquake Monitor",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "refreshInterval": 600,
+  "permissions": { "proxy": ["https://earthquake.usgs.gov/**"], "secrets": [] },
+  "settingsSchema": {
+    "minMagnitude": { "type": "enum", "label": "Min magnitude", "default": "2.5", "values": ["1.0","2.5","4.5"] },
+    "window":       { "type": "enum", "label": "Time window",   "default": "24h", "values": ["24h","7d"] },
+    "showLand":     { "type": "boolean", "label": "Show coastlines", "default": true }
+  }
+}
