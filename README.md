@@ -15,6 +15,10 @@ widget folder in and rescanning is all it takes.
 |--------|----|------|--------------|
 | [Day/Night Map](com.vardek.day-night/) | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
 | [LCD Watch](com.vardek.lcd-watch/) | `com.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
+| [Life Progress](com.vardek.life-progress/) | `com.vardek.life-progress` | 8×2 / 4×2 | Horizontal progress bars — life, year, month, week, day. Pure client-side, no network. |
+| [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map plotting recent quakes by magnitude (USGS, keyless). |
+| [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position and trail (wheretheiss.at, keyless). |
+| [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 8×2 | Upcoming rocket launches with live countdowns (Launch Library 2, keyless). |
 
 ### Day/Night Map
 [![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
