@@ -4,7 +4,12 @@ World map plotting recent earthquakes from the USGS Earthquake Hazards Program
 (GeoJSON feed, no API key needed) — dots sized and colored by magnitude.
 
 - **Positions** refresh every 10 minutes.
-- **Dot size** grows with magnitude; **color** ramps amber (low) to red (high).
+- **Dot size** grows with magnitude; **color** is banded by magnitude (green <M3,
+  yellow M3–4, orange M4–5, red M5–6, magenta M6+) — see the on-screen legend.
+- **Tap a quake dot** to see an info panel with its place, magnitude, depth, and
+  how long ago it happened. Tap empty space to dismiss it. The panel is
+  transient (in-memory only) — it clears if the carousel advances to another
+  widget and back, or on refresh if that quake drops out of the feed.
 - Coastlines are optional and drawn from bundled Natural Earth data (no network).
 
 ## Settings

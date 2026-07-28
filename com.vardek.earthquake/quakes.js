@@ -16,6 +16,7 @@
         lat,
         lon,
         mag,
+        depth: typeof coords[2] === "number" ? coords[2] : null,
         place: (props && typeof props.place === "string") ? props.place : "",
         timeMs: (props && typeof props.time === "number") ? props.time : null,
       });
@@ -31,5 +32,14 @@
     return { x: (lon + 180) / 360 * W, y: (90 - lat) / 180 * H };
   }
 
-  globalThis.Quakes = { parseQuakes, magRadius, project };
+  // Distinct magnitude bands (not a smooth blend) so overlapping dots stay legible.
+  function magColor(mag) {
+    if (mag < 3) return "#3ad16b";
+    if (mag < 4) return "#ffd60a";
+    if (mag < 5) return "#ff9f0a";
+    if (mag < 6) return "#ff453a";
+    return "#ff2d95";
+  }
+
+  globalThis.Quakes = { parseQuakes, magRadius, project, magColor };
 })();

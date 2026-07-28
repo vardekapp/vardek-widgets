@@ -17,12 +17,21 @@
   const W = 2560, H = 720;
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d");
-  const { parseQuakes, magRadius, project } = globalThis.Quakes;
+  const { parseQuakes, magRadius, project, magColor } = globalThis.Quakes;
 
   const defaults = { minMagnitude: "2.5", window: "24h", showLand: true };
   let cfg = defaults;
   let quakes = [];
   let errorMsg = null;
+  let selected = null;
+
+  const LEGEND_BANDS = [
+    { label: "< M3", color: "#3ad16b" },
+    { label: "M3–4", color: "#ffd60a" },
+    { label: "M4–5", color: "#ff9f0a" },
+    { label: "M5–6", color: "#ff453a" },
+    { label: "M6+",  color: "#ff2d95" },
+  ];
 
   function drawOcean() {
     ctx.fillStyle = "#0b0e1a";
@@ -46,30 +55,32 @@
     }
   }
 
-  // Amber (low magnitude) -> red (high magnitude), clamped to [0, 8].
-  function magColor(mag) {
-    const t = Math.max(0, Math.min(1, mag / 8));
-    const r = Math.round(255);
-    const g = Math.round(204 - t * (204 - 90));
-    const b = Math.round(102 - t * (102 - 90));
-    return `rgba(${r},${g},${b},0.75)`;
-  }
-
   function drawQuakes() {
-    for (const q of quakes) {
+    // Draw smaller/older dots first, larger last, so big quakes sit on top.
+    const ordered = quakes.slice().sort((a, b) => a.mag - b.mag);
+    for (const q of ordered) {
       const p = project(q.lon, q.lat, W, H);
       const r = magRadius(q.mag);
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
       ctx.fillStyle = magColor(q.mag);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
       ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    if (selected) {
+      const p = project(selected.lon, selected.lat, W, H);
+      const r = magRadius(selected.mag);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r + 5, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
   }
 
-  function drawLegend() {
+  function drawLegendBanner() {
     ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#e6e9ef";
@@ -79,12 +90,97 @@
     ctx.fillText(label, 16, 28);
   }
 
+  function drawMagLegend() {
+    const swatch = 14, gap = 10, pad = 12;
+    ctx.font = "14px -apple-system, 'Helvetica Neue', sans-serif";
+    const rowH = 20;
+    const boxW = 110, boxH = pad * 2 + LEGEND_BANDS.length * rowH - (rowH - swatch);
+    const x0 = W - boxW - 16, y0 = H - boxH - 16;
+    ctx.fillStyle = "rgba(11,14,26,0.75)";
+    roundRect(x0, y0, boxW, boxH, 8);
+    ctx.fill();
+    LEGEND_BANDS.forEach((b, i) => {
+      const y = y0 + pad + i * rowH;
+      ctx.fillStyle = b.color;
+      ctx.fillRect(x0 + pad, y, swatch, swatch);
+      ctx.fillStyle = "#e6e9ef";
+      ctx.textAlign = "left";
+      ctx.fillText(b.label, x0 + pad + swatch + gap, y + swatch - 2);
+    });
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function relativeTime(timeMs) {
+    if (typeof timeMs !== "number") return "unknown time";
+    const diffMin = Math.max(0, Math.round((Date.now() - timeMs) / 60000));
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return `${diffH} h ago`;
+    return `${Math.round(diffH / 24)} d ago`;
+  }
+
+  function drawInfoPanel() {
+    if (!selected) return;
+    const q = selected;
+    const p = project(q.lon, q.lat, W, H);
+    const lines = [
+      q.place || "Unknown location",
+      `M${q.mag.toFixed(1)}${typeof q.depth === "number" ? ` · depth ${q.depth.toFixed(1)} km` : ""}`,
+      relativeTime(q.timeMs),
+    ];
+    ctx.font = "15px -apple-system, 'Helvetica Neue', sans-serif";
+    const textW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const boxW = textW + 32, boxH = lines.length * 22 + 20;
+    let x = p.x + 16, y = p.y - boxH - 16;
+    x = Math.max(8, Math.min(W - boxW - 8, x));
+    y = Math.max(8, Math.min(H - boxH - 8, y));
+    ctx.fillStyle = "rgba(11,14,26,0.9)";
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1;
+    roundRect(x, y, boxW, boxH, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#e6e9ef";
+    ctx.textAlign = "left";
+    lines.forEach((l, i) => ctx.fillText(l, x + 16, y + 24 + i * 22));
+  }
+
   function draw() {
     drawOcean();
     drawLand();
     drawQuakes();
-    drawLegend();
+    drawLegendBanner();
+    drawMagLegend();
+    drawInfoPanel();
   }
+
+  function onTap(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.clientX - r.left) / r.width * W;
+    const cy = (e.clientY - r.top) / r.height * H;
+    let best = null, bestDist = Infinity;
+    for (const q of quakes) {
+      const p = project(q.lon, q.lat, W, H);
+      const dist = Math.hypot(p.x - cx, p.y - cy);
+      const hit = magRadius(q.mag) + 8;
+      if (dist <= hit && dist < bestDist) {
+        best = q;
+        bestDist = dist;
+      }
+    }
+    selected = best;
+    draw();
+  }
+  canvas.addEventListener("pointerdown", onTap);
 
   function buildUrl() {
     const winMs = cfg.window === "7d" ? 7 * 864e5 : 864e5;
