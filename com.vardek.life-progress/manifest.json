@@ -1,0 +1,18 @@
+{
+  "id": "com.vardek.life-progress",
+  "name": "Life Progress",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 }, { "cols": 4, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "settingsSchema": {
+    "birthDate":      { "type": "string",  "label": "Birth date (YYYY-MM-DD)", "default": "1990-01-01" },
+    "lifeExpectancy": { "type": "number",  "label": "Life expectancy (years)", "default": 80 },
+    "showLife":       { "type": "boolean", "label": "Life bar",  "default": true },
+    "showYear":       { "type": "boolean", "label": "Year bar",  "default": true },
+    "showMonth":      { "type": "boolean", "label": "Month bar", "default": true },
+    "showWeek":       { "type": "boolean", "label": "Week bar",  "default": true },
+    "showDay":        { "type": "boolean", "label": "Day bar",   "default": true }
+  }
+}

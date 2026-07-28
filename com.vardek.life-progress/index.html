@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #map { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="map" width="2560" height="720"></canvas>
+<script src="progress.js"></script>
+<script>
+  const W = 2560, H = 720;
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+
+  const defaults = {
+    birthDate: "1990-01-01",
+    lifeExpectancy: 80,
+    showLife: true,
+    showYear: true,
+    showMonth: true,
+    showWeek: true,
+    showDay: true
+  };
+  let cfg = defaults;
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    const bars = globalThis.Progress.progressData(Date.now(), cfg);
+    const n = bars.length;
+    if (n === 0) return;
+
+    const rowH = H / n;
+    const padX = 48;
+    const labelW = 220;
+    const detailW = 260;
+    const trackH = Math.min(28, rowH * 0.32);
+    const trackX = padX + labelW;
+    const trackW = W - padX * 2 - labelW - detailW;
+
+    bars.forEach((bar, i) => {
+      const cy = rowH * i + rowH / 2;
+
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.font = "48px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = "#e6e9ef";
+      ctx.fillText(bar.label, padX, cy);
+
+      const trackY = cy - trackH / 2;
+      ctx.fillStyle = "#1a1f30";
+      roundRect(trackX, trackY, trackW, trackH, trackH / 2);
+      ctx.fill();
+
+      const fillW = Math.max(trackH, trackW * bar.fraction);
+      if (bar.fraction > 0) {
+        ctx.fillStyle = "#7aa2f7";
+        roundRect(trackX, trackY, fillW, trackH, trackH / 2);
+        ctx.fill();
+      }
+
+      ctx.textAlign = "right";
+      ctx.font = "32px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = "#e6e9ef";
+      ctx.fillText(`${Math.round(bar.fraction * 100)}%`, W - padX, cy - 14);
+      ctx.font = "22px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText(bar.detail, W - padX, cy + 16);
+    });
+  }
+
+  document.addEventListener("vardek:ready", () => {
+    cfg = Object.assign({}, defaults, window.Vardek ? Vardek.settings : {});
+    draw();
+  });
+  draw();
+  setInterval(draw, 1000);
+</script>
+</body>
+</html>
