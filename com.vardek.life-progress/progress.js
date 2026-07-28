@@ -49,7 +49,8 @@ function weekBar(now) {
 
 function dayBar(now) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const fraction = clamp01((now - start) / 86400000);
+  const nextStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const fraction = clamp01((now - start) / (nextStart - start));
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
   return { key: "day", label: "Day", fraction, detail: `${hh}:${mm}` };
