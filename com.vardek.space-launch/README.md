@@ -3,10 +3,14 @@
 A list of upcoming rocket launches with live countdowns, via
 [Launch Library 2](https://thespacedevs.com/llapi) (thespacedevs.com, keyless).
 
-- **Rows**: mission name, provider + pad, and a live countdown to NET (No
-  Earlier Than) liftoff.
+Default size is **4×2** (half-panel); expandable to **8×2**.
+
+- **Rows**: mission name (with a rocket glyph and a per-row colored accent
+  bar), provider + pad, and a live countdown to NET (No Earlier Than) liftoff.
+  Long names/providers truncate with an ellipsis.
 - **Countdown** ticks locally every second (`Td HH:MM:SS`, or `HH:MM:SS` inside
-  the final day); shows `LIFTOFF` once the window opens.
+  the final day); shows `LIFTOFF` once the window opens. Color-coded by
+  urgency: muted blue (>24h), amber (1–24h), red (<1h), green (`LIFTOFF`).
 - Data refreshes **hourly** to respect the Launch Library 2 free-tier rate
   limit; changing the launch count re-fetches immediately since it changes the
   query.

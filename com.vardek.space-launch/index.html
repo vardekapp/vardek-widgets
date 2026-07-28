@@ -8,15 +8,17 @@
 </style>
 </head>
 <body>
-<canvas id="board" width="2560" height="720"></canvas>
+<canvas id="board" width="1280" height="720"></canvas>
 <script src="launches.js"></script>
 <script type="module">
   import { xemd } from '/sdk/widget-sdk.js';
 
-  const W = 2560, H = 720;
+  const W = 1280, H = 720;
   const canvas = document.getElementById("board");
   const ctx = canvas.getContext("2d");
   const { parseLaunches, formatCountdown } = globalThis.Launches;
+
+  const ACCENTS = ["#7aa2f7", "#3ad16b", "#ffd60a", "#ff9f0a", "#bf5af2", "#5ac8fa"];
 
   const defaults = { count: "8" };
   let cfg = Object.assign({}, defaults);
@@ -39,13 +41,40 @@
     ctx.fillText(text, W / 2, H / 2);
   }
 
+  // Truncate `text` with an ellipsis so it fits within `maxWidth` at the
+  // current ctx.font. Assumes ctx.textAlign is already set by the caller.
+  function truncate(text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let lo = 0, hi = text.length;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (ctx.measureText(text.slice(0, mid) + "…").width <= maxWidth) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo > 0 ? text.slice(0, lo) + "…" : "…";
+  }
+
+  function countdownColor(remaining) {
+    if (remaining <= 0) return "#3ad16b";
+    const hours = remaining / 3600000;
+    if (hours < 1) return "#ff453a";
+    if (hours < 24) return "#ffd60a";
+    return "#7aa2f7";
+  }
+
   function draw() {
     drawBg();
 
     ctx.textAlign = "left";
     ctx.fillStyle = "#e6e9ef";
-    ctx.font = "bold 26px -apple-system, 'Helvetica Neue', sans-serif";
-    ctx.fillText("Upcoming Launches", 24, 40);
+    ctx.font = "bold 22px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.fillText("Upcoming Launches", 24, 34);
+    ctx.strokeStyle = "#7aa2f7";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(24, 42);
+    ctx.lineTo(24 + ctx.measureText("Upcoming Launches").width, 42);
+    ctx.stroke();
 
     if (loading && launches.length === 0) {
       drawCentered("Loading…");
@@ -63,11 +92,16 @@
 
     const count = parseInt(cfg.count) || 8;
     const rows = Math.min(launches.length, count);
-    const top = 64;
+    const top = 56;
     const rowH = (H - top) / rows;
-    const nameSize = rowH >= 70 ? 24 : rowH >= 50 ? 20 : 16;
-    const subSize = rowH >= 70 ? 16 : 13;
-    const cdSize = rowH >= 70 ? 26 : rowH >= 50 ? 22 : 17;
+    const nameSize = rowH >= 70 ? 21 : rowH >= 50 ? 18 : 15;
+    const subSize = rowH >= 70 ? 14 : 12;
+    const cdSize = rowH >= 70 ? 22 : rowH >= 50 ? 19 : 15;
+    const accentW = 5;
+    const textX = 24 + accentW + 10;
+    const cdColW = rowH >= 70 ? 120 : 96;
+    const cdX = W - 24;
+    const textMaxW = cdX - cdColW - textX;
 
     for (let i = 0; i < rows; i++) {
       const l = launches[i];
@@ -83,22 +117,26 @@
         ctx.stroke();
       }
 
+      const accent = ACCENTS[i % ACCENTS.length];
+      ctx.fillStyle = accent;
+      ctx.fillRect(24, rowY + 4, accentW, rowH - 8);
+
       ctx.textAlign = "left";
       ctx.fillStyle = "#e6e9ef";
       ctx.font = `${nameSize}px -apple-system, 'Helvetica Neue', sans-serif`;
-      ctx.fillText(l.name, 24, midY - subSize / 2);
+      ctx.fillText("🚀 " + truncate(l.name, textMaxW - 26), textX, midY - subSize / 2);
 
       ctx.fillStyle = "#8089a6";
       ctx.font = `${subSize}px -apple-system, 'Helvetica Neue', sans-serif`;
       const sub = [l.provider, l.pad].filter(Boolean).join(" · ");
-      ctx.fillText(sub, 24, midY + subSize + 2);
+      ctx.fillText(truncate(sub, textMaxW), textX, midY + subSize + 2);
 
       const remaining = l.netMs - Date.now();
       const cd = formatCountdown(remaining);
       ctx.textAlign = "right";
       ctx.font = `bold ${cdSize}px -apple-system, 'Helvetica Neue', sans-serif`;
-      ctx.fillStyle = remaining <= 0 ? "#ff6b6b" : "#7aa2f7";
-      ctx.fillText(cd, W - 24, midY + cdSize / 3);
+      ctx.fillStyle = countdownColor(remaining);
+      ctx.fillText(cd, cdX, midY + cdSize / 3);
     }
 
     if (errorMsg) {

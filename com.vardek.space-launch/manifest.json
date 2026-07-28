@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "entry": "index.html",
   "subscriptions": [],
-  "sizes": [ { "cols": 8, "rows": 2 } ],
-  "canvas": { "width": 2560, "height": 720 },
+  "sizes": [ { "cols": 4, "rows": 2 }, { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 1280, "height": 720 },
   "refreshInterval": 3600,
   "permissions": { "proxy": ["https://ll.thespacedevs.com/**"], "secrets": [] },
   "settingsSchema": {
