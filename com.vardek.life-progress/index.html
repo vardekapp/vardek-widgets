@@ -36,6 +36,14 @@
     ctx.closePath();
   }
 
+  const colorMap = {
+    life:  { main: "#ffcc66", dark: "#b38a30", glow: "255,204,102" },
+    year:  { main: "#7aa2f7", dark: "#4a6cc0", glow: "122,162,247" },
+    month: { main: "#3ad16b", dark: "#1f8a42", glow: "58,209,107" },
+    week:  { main: "#bf5af2", dark: "#8a30c0", glow: "191,90,242" },
+    day:   { main: "#5ac8fa", dark: "#2a88c0", glow: "90,200,250" }
+  };
+
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
@@ -43,72 +51,108 @@
     const n = bars.length;
     if (n === 0) return;
 
-    // Per-bar colors: key → {main, dark}
-    const colorMap = {
-      life:  { main: "#ffcc66", dark: "#d4a444" },
-      year:  { main: "#7aa2f7", dark: "#5a7cc7" },
-      month: { main: "#3ad16b", dark: "#2a9a4b" },
-      week:  { main: "#bf5af2", dark: "#8f3ac2" },
-      day:   { main: "#5ac8fa", dark: "#3a98ca" }
-    };
-
     const rowH = H / n;
-    const padX = 48;
-    const labelW = 220;
-    const detailW = 260;
-    const trackH = Math.min(28, rowH * 0.32);
+    const padX = 60;
+    const labelW = 260;
+    const rightW = 300;
+    const trackH = 40;
     const trackX = padX + labelW;
-    const trackW = W - padX * 2 - labelW - detailW;
+    const trackW = W - trackX - rightW - padX;
+    const t = Date.now() / 1000;
 
     bars.forEach((bar, i) => {
       const cy = rowH * i + rowH / 2;
-      const colors = colorMap[bar.key] || { main: "#7aa2f7", dark: "#5a7cc7" };
+      const colors = colorMap[bar.key] || colorMap.year;
+      const trackY = cy - trackH / 2;
 
+      if (i > 0) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padX, rowH * i);
+        ctx.lineTo(W - padX, rowH * i);
+        ctx.stroke();
+      }
+
+      // Label in accent color
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.font = "48px -apple-system, 'Helvetica Neue', sans-serif";
-      ctx.fillStyle = "#e6e9ef";
+      ctx.font = "600 46px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = colors.main;
       ctx.fillText(bar.label, padX, cy);
 
-      const trackY = cy - trackH / 2;
-      ctx.fillStyle = "#1a1f30";
+      // Track with inset gradient
+      const trackGrad = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
+      trackGrad.addColorStop(0, "#080c14");
+      trackGrad.addColorStop(1, "#121826");
+      ctx.fillStyle = trackGrad;
       roundRect(trackX, trackY, trackW, trackH, trackH / 2);
       ctx.fill();
 
-      // Track top highlight
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-      ctx.lineWidth = 1;
+      // Track inner shadow
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(trackX + trackH / 2, trackY + 1);
       ctx.lineTo(trackX + trackW - trackH / 2, trackY + 1);
       ctx.stroke();
 
+      // Track bottom rim light
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(trackX + trackH / 2, trackY + trackH - 1);
+      ctx.lineTo(trackX + trackW - trackH / 2, trackY + trackH - 1);
+      ctx.stroke();
+
       const fillW = Math.max(trackH, trackW * bar.fraction);
       if (bar.fraction > 0) {
-        // Gradient from dark to main color (horizontal)
-        const gradient = ctx.createLinearGradient(trackX, 0, trackX + fillW, 0);
-        gradient.addColorStop(0, colors.dark);
-        gradient.addColorStop(1, colors.main);
+        const grad = ctx.createLinearGradient(trackX, 0, trackX + fillW, 0);
+        grad.addColorStop(0, colors.dark);
+        grad.addColorStop(1, colors.main);
 
-        // Soft glow
         ctx.shadowColor = colors.main;
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = grad;
+        roundRect(trackX, trackY, fillW, trackH, trackH / 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
 
-        ctx.fillStyle = gradient;
+        // Glass highlight
+        const glass = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
+        glass.addColorStop(0, "rgba(255, 255, 255, 0.25)");
+        glass.addColorStop(0.35, "rgba(255, 255, 255, 0.07)");
+        glass.addColorStop(0.5, "rgba(255, 255, 255, 0)");
+        glass.addColorStop(1, "rgba(0, 0, 0, 0.12)");
+        ctx.fillStyle = glass;
         roundRect(trackX, trackY, fillW, trackH, trackH / 2);
         ctx.fill();
 
-        // Reset shadow
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
+        // Pulsing leading-edge glow
+        if (bar.fraction > 0.01 && bar.fraction < 0.99) {
+          const edgeX = trackX + fillW;
+          const pulse = 0.5 + 0.5 * Math.sin(t * 2 + i * 1.2);
+          const r = trackH * 1.8;
+          const radGrad = ctx.createRadialGradient(edgeX, cy, 0, edgeX, cy, r);
+          radGrad.addColorStop(0, "rgba(" + colors.glow + "," + (0.15 + 0.25 * pulse) + ")");
+          radGrad.addColorStop(0.5, "rgba(" + colors.glow + "," + (0.04 + 0.06 * pulse) + ")");
+          radGrad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = radGrad;
+          ctx.fillRect(edgeX - r, cy - r, r * 2, r * 2);
+        }
       }
 
+      // Percentage
       ctx.textAlign = "right";
-      ctx.font = "32px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.font = "700 44px -apple-system, 'Helvetica Neue', sans-serif";
       ctx.fillStyle = "#e6e9ef";
-      ctx.fillText(`${Math.round(bar.fraction * 100)}%`, W - padX, cy - 14);
+      ctx.fillText(Math.round(bar.fraction * 100) + "%", W - padX, cy - 14);
+
+      // Detail
       ctx.font = "22px -apple-system, 'Helvetica Neue', sans-serif";
-      ctx.fillStyle = "#8089a6";
+      ctx.fillStyle = "#5a6380";
       ctx.fillText(bar.detail, W - padX, cy + 16);
     });
   }
@@ -118,7 +162,7 @@
     draw();
   });
   draw();
-  setInterval(draw, 1000);
+  setInterval(draw, 200);
 </script>
 </body>
 </html>

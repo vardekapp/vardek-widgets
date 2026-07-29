@@ -34,7 +34,11 @@
   ];
 
   function drawOcean() {
-    ctx.fillStyle = "#0b0e1a";
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#070a14");
+    grad.addColorStop(0.5, "#0d1220");
+    grad.addColorStop(1, "#070a14");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
   }
 
@@ -55,57 +59,131 @@
     }
   }
 
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255);
+  }
+
+  function drawGraticule() {
+    ctx.strokeStyle = "rgba(122,162,247,0.07)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    for (let lat = -60; lat <= 60; lat += 30) {
+      if (lat === 0) continue;
+      const y = (90 - lat) / 180 * H;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    for (let lon = -150; lon <= 150; lon += 30) {
+      const x = (lon + 180) / 360 * W;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(122,162,247,0.12)";
+    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+  }
+
   function drawQuakes() {
-    // Draw smaller/older dots first, larger last, so big quakes sit on top.
     const ordered = quakes.slice().sort((a, b) => a.mag - b.mag);
+    const t = Date.now() / 1000;
+    const now = Date.now();
+
     for (const q of ordered) {
       const p = project(q.lon, q.lat, W, H);
       const r = magRadius(q.mag);
+      const color = magColor(q.mag);
+
+      if (q.mag >= 4) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = Math.min(22, q.mag * 3);
+      }
+
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = magColor(q.mag);
+      ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = "transparent";
+
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
       ctx.lineWidth = 1;
       ctx.stroke();
+
+      if (q.timeMs && (now - q.timeMs) < 3600000) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 3 + q.timeMs * 0.001);
+        const rgb = hexToRgb(color);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r + 3 + pulse * 4, 0, 2 * Math.PI);
+        ctx.strokeStyle = "rgba(" + rgb + "," + (0.15 + 0.35 * pulse) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
     }
+
     if (selected) {
       const p = project(selected.lon, selected.lat, W, H);
       const r = magRadius(selected.mag);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r + 5, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      for (let ring = 0; ring < 3; ring++) {
+        const phase = ((t * 0.7 + ring * 0.33) % 1);
+        const ringR = r + 4 + phase * 30;
+        const alpha = (1 - phase) * 0.45;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, ringR, 0, 2 * Math.PI);
+        ctx.strokeStyle = "rgba(255,255,255," + alpha + ")";
+        ctx.lineWidth = Math.max(0.5, 2 - phase * 1.5);
+        ctx.stroke();
+      }
     }
   }
 
-  function drawLegendBanner() {
-    ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
+  function drawTitle() {
+    ctx.font = "bold 25px -apple-system, 'Helvetica Neue', sans-serif";
     ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    if (errorMsg && quakes.length === 0) {
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText("Earthquake Monitor — " + errorMsg, 24, 38);
+      return;
+    }
     ctx.fillStyle = "#e6e9ef";
-    const label = errorMsg
-      ? `Earthquake Monitor — ${errorMsg}`
-      : `${quakes.length} quakes · M${cfg.minMagnitude}+ · last ${cfg.window}`;
-    ctx.fillText(label, 16, 28);
+    ctx.fillText("Earthquake Monitor", 24, 38);
+    ctx.strokeStyle = "#7aa2f7";
+    ctx.lineWidth = 2;
+    const tw = ctx.measureText("Earthquake Monitor").width;
+    ctx.beginPath(); ctx.moveTo(24, 46); ctx.lineTo(24 + tw, 46); ctx.stroke();
+
+    ctx.font = "16px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.fillStyle = "#5a6888";
+    const sub = quakes.length + " quakes · M" + cfg.minMagnitude + "+ · last " + cfg.window;
+    ctx.fillText(sub, 24, 66);
+    if (errorMsg) {
+      ctx.fillStyle = "#ff453a";
+      ctx.fillText(errorMsg, 24 + ctx.measureText(sub).width + 16, 66);
+    }
   }
 
   function drawMagLegend() {
-    const swatch = 14, gap = 10, pad = 12;
-    ctx.font = "14px -apple-system, 'Helvetica Neue', sans-serif";
-    const rowH = 20;
-    const boxW = 110, boxH = pad * 2 + LEGEND_BANDS.length * rowH - (rowH - swatch);
-    const x0 = W - boxW - 16, y0 = H - boxH - 16;
-    ctx.fillStyle = "rgba(11,14,26,0.75)";
-    roundRect(x0, y0, boxW, boxH, 8);
+    const pad = 14, rowH = 22;
+    const boxW = 120, boxH = pad * 2 + LEGEND_BANDS.length * rowH - (rowH - 14);
+    const x0 = W - boxW - 24, y0 = H - boxH - 24;
+
+    ctx.fillStyle = "rgba(8,12,20,0.85)";
+    roundRect(x0, y0, boxW, boxH, 10);
     ctx.fill();
+    ctx.strokeStyle = "rgba(122,162,247,0.20)";
+    ctx.lineWidth = 1;
+    roundRect(x0, y0, boxW, boxH, 10);
+    ctx.stroke();
+
+    ctx.font = "14px -apple-system, 'Helvetica Neue', sans-serif";
     LEGEND_BANDS.forEach((b, i) => {
       const y = y0 + pad + i * rowH;
+      ctx.beginPath();
+      ctx.arc(x0 + pad + 7, y + 7, 6, 0, 2 * Math.PI);
       ctx.fillStyle = b.color;
-      ctx.fillRect(x0 + pad, y, swatch, swatch);
-      ctx.fillStyle = "#e6e9ef";
+      ctx.fill();
+      ctx.fillStyle = "#8089a6";
       ctx.textAlign = "left";
-      ctx.fillText(b.label, x0 + pad + swatch + gap, y + swatch - 2);
+      ctx.fillText(b.label, x0 + pad + 20, y + 12);
     });
   }
 
@@ -132,33 +210,51 @@
     if (!selected) return;
     const q = selected;
     const p = project(q.lon, q.lat, W, H);
+    const bandColor = magColor(q.mag);
+    const latDir = q.lat >= 0 ? "N" : "S";
+    const lonDir = q.lon >= 0 ? "E" : "W";
+
     const lines = [
-      q.place || "Unknown location",
-      `M${q.mag.toFixed(1)}${typeof q.depth === "number" ? ` · depth ${q.depth.toFixed(1)} km` : ""}`,
-      relativeTime(q.timeMs),
+      { text: q.place || "Unknown location", font: "600 16px", color: "#e6e9ef" },
+      { text: "M" + q.mag.toFixed(1) + (typeof q.depth === "number" ? " · depth " + q.depth.toFixed(1) + " km" : ""), font: "14px", color: bandColor },
+      { text: relativeTime(q.timeMs) + " · " + Math.abs(q.lat).toFixed(2) + "° " + latDir + ", " + Math.abs(q.lon).toFixed(2) + "° " + lonDir, font: "14px", color: "#5a6888" },
     ];
-    ctx.font = "15px -apple-system, 'Helvetica Neue', sans-serif";
-    const textW = Math.max(...lines.map(l => ctx.measureText(l).width));
-    const boxW = textW + 32, boxH = lines.length * 22 + 20;
-    let x = p.x + 16, y = p.y - boxH - 16;
-    x = Math.max(8, Math.min(W - boxW - 8, x));
-    y = Math.max(8, Math.min(H - boxH - 8, y));
-    ctx.fillStyle = "rgba(11,14,26,0.9)";
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 1;
-    roundRect(x, y, boxW, boxH, 10);
+
+    ctx.font = "600 16px -apple-system, 'Helvetica Neue', sans-serif";
+    let maxW = 0;
+    for (const l of lines) {
+      ctx.font = l.font + " -apple-system, 'Helvetica Neue', sans-serif";
+      maxW = Math.max(maxW, ctx.measureText(l.text).width);
+    }
+
+    const pw = maxW + 32, ph = lines.length * 24 + 20;
+    let x = p.x + 20, y = p.y - ph - 20;
+    x = Math.max(8, Math.min(W - pw - 8, x));
+    y = Math.max(8, Math.min(H - ph - 8, y));
+
+    ctx.fillStyle = "rgba(8,12,20,0.92)";
+    roundRect(x, y, pw, ph, 10);
     ctx.fill();
+    const rgb = hexToRgb(bandColor);
+    ctx.strokeStyle = "rgba(" + rgb + ",0.35)";
+    ctx.lineWidth = 1;
+    roundRect(x, y, pw, ph, 10);
     ctx.stroke();
-    ctx.fillStyle = "#e6e9ef";
+
     ctx.textAlign = "left";
-    lines.forEach((l, i) => ctx.fillText(l, x + 16, y + 24 + i * 22));
+    lines.forEach((l, i) => {
+      ctx.font = l.font + " -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = l.color;
+      ctx.fillText(l.text, x + 16, y + 24 + i * 24);
+    });
   }
 
   function draw() {
     drawOcean();
     drawLand();
+    drawGraticule();
     drawQuakes();
-    drawLegendBanner();
+    drawTitle();
     drawMagLegend();
     drawInfoPanel();
   }
@@ -204,8 +300,8 @@
     draw();
   }
 
-  // Draw an initial empty map immediately so the widget is never blank.
   draw();
+  setInterval(draw, 200);
 
   xemd.settings.get().then(s => {
     cfg = Object.assign({}, defaults, s);
