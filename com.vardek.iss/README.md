@@ -5,8 +5,8 @@ computed locally with [satellite.js](https://github.com/shashwatak/satellite-js)
 (MIT) via SGP4 propagation of its orbital elements (TLE).
 
 - **TLE** (two-line element set) is fetched from
-  [Celestrak](https://celestrak.org/) once per hour; the current position,
-  past trail, and projected future track are all propagated locally every
+  [wheretheiss.at](https://wheretheiss.at/w/developer) once per hour; the current
+  position, past trail, and projected future track are all propagated locally every
   second from that TLE, so motion stays smooth between hourly refreshes.
 - **Satellite icon** marks the current subpoint — a small central body with
   two solar-panel wings and a soft glow.
@@ -46,7 +46,7 @@ See the [repo README](../README.md) for manual install and uninstall.
 ## Data
 
 Orbital elements (TLE) for ISS (NORAD ID 25544) from
-[Celestrak](https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle)
+[wheretheiss.at](https://api.wheretheiss.at/v1/satellites/25544/tles)
 (public, no key required), refreshed hourly. Position, trail, and projected
 path are computed locally each second via SGP4 using bundled
 [satellite.js v5](https://github.com/shashwatak/satellite-js) (MIT license).

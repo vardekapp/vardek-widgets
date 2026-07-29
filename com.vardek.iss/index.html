@@ -16,7 +16,9 @@
   import { xemd } from '/sdk/widget-sdk.js';
 
   const W = 2560, H = 720;
-  const TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle";
+  // wheretheiss.at serves the ISS TLE as JSON ({line1,line2}); keyless, HTTPS.
+  // (Celestrak's gp.php now 403s these requests.)
+  const TLE_URL = "https://api.wheretheiss.at/v1/satellites/25544/tles";
   const TRAIL_MS = 45 * 60000;
   const PROJECTION_MS = 90 * 60000;
   const STEP_MS = 60000;
@@ -297,9 +299,9 @@
     try {
       const res = await xemd.proxy.fetch(TLE_URL);
       if (res.ok) {
-        const tle = parseTLE(await res.text());
-        if (tle) {
-          satrec = globalThis.satellite.twoline2satrec(tle.l1, tle.l2);
+        const j = await res.json();
+        if (j && j.line1 && j.line2) {
+          satrec = globalThis.satellite.twoline2satrec(j.line1, j.line2);
           errorMsg = null;
         } else {
           errorMsg = "bad TLE data";
