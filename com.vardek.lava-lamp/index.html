@@ -57,7 +57,6 @@
     const time = t / 1000;
     // Background: near-black with a warm heat glow rising from the base.
     ctx.globalCompositeOperation = "source-over";
-    ctx.filter = "none";
     ctx.fillStyle = "#08070c";
     ctx.fillRect(0, 0, W, H);
     const heat = ctx.createRadialGradient(W / 2, H * 1.05, 0, W / 2, H * 1.05, H * 1.1);
@@ -66,33 +65,33 @@
     ctx.fillStyle = heat;
     ctx.fillRect(0, 0, W, H);
 
-    // Gooey blobs: additive radial gradients under one blur pass so overlaps merge.
-    const blur = Math.max(6, Math.min(W, H) * (cfg.glow ? 0.030 : 0.020));
+    // Gooey blobs: soft additive radial gradients (NO canvas ctx.filter — its
+    // support is buggy in WKWebView, especially with 'lighter' compositing, and
+    // it renders blank there). The soft gradient falloff + additive overlap gives
+    // the merging-lava glow on its own.
     ctx.globalCompositeOperation = "lighter";
-    ctx.filter = `blur(${blur}px)`;
     for (const b of blobs) {
       const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
       const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
       const pr = b.r * (0.88 + 0.12 * Math.sin(time * 0.5 * sp + b.phase));
-      const x = bx * W, y = by * H, r = pr * H;
+      const x = bx * W, y = by * H, r = pr * H * 1.4; // wider for soft overlap/merge
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, hexRgba(b.color, 0.95));
-      g.addColorStop(0.6, hexRgba(b.color, 0.5));
+      g.addColorStop(0, hexRgba(b.color, 0.90));
+      g.addColorStop(0.35, hexRgba(b.color, 0.45));
       g.addColorStop(1, hexRgba(b.color, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Optional bloom: a second, softer pass for extra glow.
+    // Optional bloom: a second, larger, fainter pass for extra glow.
     if (cfg.glow) {
-      ctx.filter = `blur(${blur * 2.4}px)`;
       for (const b of blobs) {
         const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
         const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
-        const x = bx * W, y = by * H, r = b.r * H * 1.1;
+        const x = bx * W, y = by * H, r = b.r * H * 2.3;
         const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, hexRgba(b.color, 0.25));
+        g.addColorStop(0, hexRgba(b.color, 0.16));
         g.addColorStop(1, hexRgba(b.color, 0));
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -100,7 +99,6 @@
         ctx.fill();
       }
     }
-    ctx.filter = "none";
     ctx.globalCompositeOperation = "source-over";
   }
 
