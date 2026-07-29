@@ -3,6 +3,7 @@
   "name": "LCD Watch",
   "version": "1.0.0",
   "entry": "index.html",
+  "icon": "⌚",
   "subscriptions": [],
   "sizes": [ { "cols": 4, "rows": 2 }, { "cols": 2, "rows": 1 } ],
   "canvas": { "width": 1280, "height": 640 },

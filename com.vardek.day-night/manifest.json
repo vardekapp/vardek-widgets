@@ -3,6 +3,7 @@
   "name": "Day/Night Map",
   "version": "1.0.0",
   "entry": "index.html",
+  "icon": "🌓",
   "subscriptions": [],
   "sizes": [ { "cols": 8, "rows": 2 } ],
   "canvas": { "width": 2560, "height": 720 },

@@ -40,6 +40,7 @@ folder name.
 |-------|----------|-------|
 | `id` | yes | Reverse-DNS, equals folder name. |
 | `name` | yes | Shown in Admin. |
+| `icon` | optional | An emoji shown as the widget's tile icon in Admin (e.g. `"🛰️"`). Omit for a neutral default. |
 | `version` | yes | Semver string. |
 | `entry` | yes | HTML file to load. |
 | `sizes` | yes | Allowed footprints on the 8×2 grid. `cols` 1–8, `rows` 1–2. |
