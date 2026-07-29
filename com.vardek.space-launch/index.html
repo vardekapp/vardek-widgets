@@ -13,9 +13,16 @@
 <script type="module">
   import { xemd } from '/sdk/widget-sdk.js';
 
-  const W = 1280, H = 720;
   const canvas = document.getElementById("board");
   const ctx = canvas.getContext("2d");
+  // Responsive: size the canvas to the actual cell (fills 4x2 or 8x2 fully).
+  let W = canvas.width, H = canvas.height;
+  function fit() {
+    W = canvas.width = Math.round(window.innerWidth) || 1280;
+    H = canvas.height = Math.round(window.innerHeight) || 720;
+    draw();
+  }
+  window.addEventListener("resize", fit);
   const { parseLaunches, formatCountdown } = globalThis.Launches;
 
   const ACCENTS = ["#7aa2f7", "#3ad16b", "#ffd60a", "#ff9f0a", "#bf5af2", "#5ac8fa"];
@@ -166,8 +173,8 @@
     draw();
   }
 
-  // Draw an initial loading state immediately so the widget is never blank.
-  draw();
+  // Size to the cell and draw an initial loading state immediately (never blank).
+  fit();
 
   xemd.settings.get().then(s => {
     cfg = Object.assign({}, defaults, s);
