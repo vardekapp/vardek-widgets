@@ -26,6 +26,18 @@ widget folder in and rescanning is all it takes.
 ### LCD Watch
 [![LCD Watch widget](com.vardek.lcd-watch/lcdclock.png)](com.vardek.lcd-watch/)
 
+### Life Progress
+[![Life Progress widget](com.vardek.life-progress/life-progress.png)](com.vardek.life-progress/)
+
+### Earthquake Monitor
+[![Earthquake Monitor widget](com.vardek.earthquake/earthquake.png)](com.vardek.earthquake/)
+
+### ISS Tracker
+[![ISS Tracker widget](com.vardek.iss/iss.png)](com.vardek.iss/)
+
+### Space Launch Schedule
+[![Space Launch Schedule widget](com.vardek.space-launch/space-launch.png)](com.vardek.space-launch/)
+
 ## Install
 
 **Option A — script (easiest):**

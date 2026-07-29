@@ -15,6 +15,8 @@ Default size is **4×2** (half-panel); expandable to **8×2**.
   limit; changing the launch count re-fetches immediately since it changes the
   query.
 
+![Space Launch Schedule widget](space-launch.png)
+
 ## Settings
 
 | Key     | Type | Default | Description        |

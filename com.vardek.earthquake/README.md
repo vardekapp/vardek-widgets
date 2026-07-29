@@ -12,6 +12,8 @@ World map plotting recent earthquakes from the USGS Earthquake Hazards Program
   widget and back, or on refresh if that quake drops out of the feed.
 - Coastlines are optional and drawn from bundled Natural Earth data (no network).
 
+![Earthquake Monitor widget](earthquake.png)
+
 ## Settings
 
 | Key            | Type    | Default | Description                          |

@@ -4,6 +4,8 @@ Horizontal progress bars showing how far along you are in the day, week,
 month, year, and (optionally) your life — computed locally from your
 device's clock, no network.
 
+![Life Progress widget](life-progress.png)
+
 ## Settings
 
 | Key              | Type    | Default        | Description                  |

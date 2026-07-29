@@ -19,6 +19,8 @@ computed locally with [satellite.js](https://github.com/shashwatak/satellite-js)
 - Coastlines are optional and drawn from bundled Natural Earth data (no
   network).
 
+![ISS Tracker widget](iss.png)
+
 ## Settings
 
 | Key              | Type    | Default | Description                          |
