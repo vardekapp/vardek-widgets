@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #08070c; }
+  #lava { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="lava"></canvas>
+<script src="lava.js"></script>
+<script>
+  const canvas = document.getElementById("lava");
+  const ctx = canvas.getContext("2d");
+  const { palette, speedFactor, blobCount } = globalThis.Lava;
+
+  const defaults = { colorScheme: "classic", speed: "medium", density: "some", glow: true };
+  let cfg = defaults;
+  let W = 0, H = 0, colors = [], blobs = [], sp = 1;
+
+  function hexRgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
+  // Blobs live in normalized coords (0..1) so a resize just rescales them.
+  function makeBlobs() {
+    const n = blobCount(cfg.density);
+    blobs = [];
+    for (let i = 0; i < n; i++) {
+      blobs.push({
+        bx: Math.random(),                 // horizontal home
+        drift: 0.02 + Math.random() * 0.05,// horizontal sway amount
+        r: 0.10 + Math.random() * 0.14,    // radius (fraction of H)
+        phase: Math.random() * Math.PI * 2,
+        rate: 0.10 + Math.random() * 0.22, // vertical bob rate
+        color: colors[i % colors.length],
+      });
+    }
+  }
+
+  function applyCfg() {
+    cfg = Object.assign({}, defaults, window.Vardek ? Vardek.settings : {});
+    colors = palette(cfg.colorScheme);
+    sp = speedFactor(cfg.speed);
+    makeBlobs();
+  }
+
+  function fit() {
+    W = canvas.width = Math.round(window.innerWidth) || 1280;
+    H = canvas.height = Math.round(window.innerHeight) || 720;
+  }
+  window.addEventListener("resize", fit);
+
+  function draw(t) {
+    const time = t / 1000;
+    // Background: near-black with a warm heat glow rising from the base.
+    ctx.globalCompositeOperation = "source-over";
+    ctx.filter = "none";
+    ctx.fillStyle = "#08070c";
+    ctx.fillRect(0, 0, W, H);
+    const heat = ctx.createRadialGradient(W / 2, H * 1.05, 0, W / 2, H * 1.05, H * 1.1);
+    heat.addColorStop(0, hexRgba(colors[0], 0.28));
+    heat.addColorStop(1, hexRgba(colors[0], 0));
+    ctx.fillStyle = heat;
+    ctx.fillRect(0, 0, W, H);
+
+    // Gooey blobs: additive radial gradients under one blur pass so overlaps merge.
+    const blur = Math.max(6, Math.min(W, H) * (cfg.glow ? 0.030 : 0.020));
+    ctx.globalCompositeOperation = "lighter";
+    ctx.filter = `blur(${blur}px)`;
+    for (const b of blobs) {
+      const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
+      const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
+      const pr = b.r * (0.88 + 0.12 * Math.sin(time * 0.5 * sp + b.phase));
+      const x = bx * W, y = by * H, r = pr * H;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, hexRgba(b.color, 0.95));
+      g.addColorStop(0.6, hexRgba(b.color, 0.5));
+      g.addColorStop(1, hexRgba(b.color, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Optional bloom: a second, softer pass for extra glow.
+    if (cfg.glow) {
+      ctx.filter = `blur(${blur * 2.4}px)`;
+      for (const b of blobs) {
+        const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
+        const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
+        const x = bx * W, y = by * H, r = b.r * H * 1.1;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, hexRgba(b.color, 0.25));
+        g.addColorStop(1, hexRgba(b.color, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.filter = "none";
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  // ~30fps cap — smooth enough for lava, easy on the CPU (off-page rAF is throttled
+  // by WKWebView anyway, so the lamp pauses when its carousel page isn't shown).
+  let last = 0;
+  function loop(t) {
+    if (t - last >= 33) { last = t; draw(t); }
+    requestAnimationFrame(loop);
+  }
+
+  fit();
+  applyCfg();
+  document.addEventListener("vardek:ready", applyCfg);
+  requestAnimationFrame(loop);
+</script>
+</body>
+</html>

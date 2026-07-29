@@ -1,0 +1,18 @@
+{
+  "id": "com.vardek.lava-lamp",
+  "name": "Lava Lamp",
+  "entry": "index.html",
+  "icon": "🪔",
+  "subscriptions": [],
+  "sizes": [ { "cols": 4, "rows": 2 }, { "cols": 8, "rows": 2 } ],
+  "version": "1.0.0",
+  "settingsSchema": {
+    "colorScheme": { "type": "enum", "label": "Lava color", "default": "classic",
+                     "values": ["classic", "aqua", "toxic", "sunset", "ember", "mono"] },
+    "speed":       { "type": "enum", "label": "Speed", "default": "medium",
+                     "values": ["slow", "medium", "fast"] },
+    "density":     { "type": "enum", "label": "Blob density", "default": "some",
+                     "values": ["few", "some", "many"] },
+    "glow":        { "type": "boolean", "label": "Glow", "default": true }
+  }
+}

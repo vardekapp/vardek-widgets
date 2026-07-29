@@ -17,8 +17,9 @@ widget folder in and rescanning is all it takes.
 | [LCD Watch](com.vardek.lcd-watch/) | `com.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
 | [Life Progress](com.vardek.life-progress/) | `com.vardek.life-progress` | 8×2 / 4×2 | Horizontal progress bars — life, year, month, week, day. Pure client-side, no network. |
 | [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
-| [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from Celestrak TLE (keyless). |
+| [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
+| [Lava Lamp](com.vardek.lava-lamp/) | `com.vardek.lava-lamp` | 4×2 / 8×2 | Ambient gooey lava field — 6 color schemes, adjustable speed/density/glow. Pure local animation, no network. |
 
 ### Day/Night Map
 [![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
