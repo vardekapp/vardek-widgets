@@ -13,7 +13,8 @@
 <script>
   const canvas = document.getElementById("lava");
   const ctx = canvas.getContext("2d");
-  const { palette, speedFactor, blobCount } = globalThis.Lava;
+  const L = globalThis.Lava || {};
+  const palette = L.palette, speedFactor = L.speedFactor, blobCount = L.blobCount;
 
   const defaults = { colorScheme: "classic", speed: "medium", density: "some", glow: true };
   let cfg = defaults;
