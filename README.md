@@ -19,7 +19,6 @@ widget folder in and rescanning is all it takes.
 | [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
 | [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
-| [Lava Lamp](com.vardek.lava-lamp/) | `com.vardek.lava-lamp` | 4×2 / 8×2 | Ambient gooey lava field — 6 color schemes, adjustable speed/density/glow. Pure local animation, no network. |
 
 ### Day/Night Map
 [![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
