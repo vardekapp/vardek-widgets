@@ -14,97 +14,125 @@
   const canvas = document.getElementById("lava");
   const ctx = canvas.getContext("2d");
   const L = globalThis.Lava || {};
-  const palette = L.palette, speedFactor = L.speedFactor, blobCount = L.blobCount;
+
+  // Low-res offscreen "field" for the metaball threshold — cheap, upscaled with
+  // smoothing so the fused blobs get soft gooey edges for free.
+  const SCALE = 4;
+  const field = document.createElement("canvas");
+  const fctx = field.getContext("2d", { willReadFrequently: true });
 
   const defaults = { colorScheme: "classic", speed: "medium", density: "some", glow: true };
   let cfg = defaults;
-  let W = 0, H = 0, colors = [], blobs = [], sp = 1;
+  let W = 0, H = 0, blobs = [], sp = 1;
+  let ramp = null;    // 256-entry [r,g,b] LUT: field intensity → lava color
+  const T = 128;      // metaball threshold on summed field intensity
 
-  function hexRgba(hex, a) {
+  function hexToRgb(hex) {
     const n = parseInt(hex.slice(1), 16);
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function lerp(a, b, t) { return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ]; }
+
+  // Build a 256-entry color ramp from the palette: edge (cool) → mid → core (hot).
+  function buildRamp() {
+    const p = (L.palette ? L.palette(cfg.colorScheme) : ["#ff2d00", "#ff6a00", "#ffb300"]);
+    const edge = hexToRgb(p[2] || p[0]), mid = hexToRgb(p[1] || p[0]), core = hexToRgb(p[0]);
+    ramp = new Array(256);
+    for (let v = 0; v < 256; v++) {
+      const t = v < T ? 0 : (v - T) / (255 - T);         // 0 at threshold edge, 1 at dense core
+      ramp[v] = t < 0.5 ? lerp(edge, mid, t * 2) : lerp(mid, core, (t - 0.5) * 2);
+    }
   }
 
-  // Blobs live in normalized coords (0..1) so a resize just rescales them.
   function makeBlobs() {
-    const n = blobCount(cfg.density);
+    const n = L.blobCount ? L.blobCount(cfg.density) : 12;
     blobs = [];
     for (let i = 0; i < n; i++) {
       blobs.push({
-        bx: Math.random(),                 // horizontal home
-        drift: 0.02 + Math.random() * 0.05,// horizontal sway amount
-        r: 0.10 + Math.random() * 0.14,    // radius (fraction of H)
+        bx: Math.random(),
+        drift: 0.02 + Math.random() * 0.05,
+        r: 0.13 + Math.random() * 0.13,     // fraction of H
         phase: Math.random() * Math.PI * 2,
-        rate: 0.10 + Math.random() * 0.22, // vertical bob rate
-        color: colors[i % colors.length],
+        rate: 0.10 + Math.random() * 0.20,
       });
     }
   }
 
   function applyCfg() {
     cfg = Object.assign({}, defaults, window.Vardek ? Vardek.settings : {});
-    colors = palette(cfg.colorScheme);
-    sp = speedFactor(cfg.speed);
+    sp = L.speedFactor ? L.speedFactor(cfg.speed) : 1;
+    buildRamp();
     makeBlobs();
   }
 
   function fit() {
     W = canvas.width = Math.round(window.innerWidth) || 1280;
     H = canvas.height = Math.round(window.innerHeight) || 720;
+    field.width = Math.max(1, Math.round(W / SCALE));
+    field.height = Math.max(1, Math.round(H / SCALE));
   }
   window.addEventListener("resize", fit);
 
   function draw(t) {
     const time = t / 1000;
-    // Background: near-black with a warm heat glow rising from the base.
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#08070c";
-    ctx.fillRect(0, 0, W, H);
-    const heat = ctx.createRadialGradient(W / 2, H * 1.05, 0, W / 2, H * 1.05, H * 1.1);
-    heat.addColorStop(0, hexRgba(colors[0], 0.28));
-    heat.addColorStop(1, hexRgba(colors[0], 0));
-    ctx.fillStyle = heat;
-    ctx.fillRect(0, 0, W, H);
+    const fw = field.width, fh = field.height;
 
-    // Gooey blobs: soft additive radial gradients (NO canvas ctx.filter — its
-    // support is buggy in WKWebView, especially with 'lighter' compositing, and
-    // it renders blank there). The soft gradient falloff + additive overlap gives
-    // the merging-lava glow on its own.
-    ctx.globalCompositeOperation = "lighter";
+    // 1) Accumulate the scalar field: each blob a white radial gradient, added.
+    fctx.globalCompositeOperation = "source-over";
+    fctx.clearRect(0, 0, fw, fh);
+    fctx.globalCompositeOperation = "lighter";
     for (const b of blobs) {
       const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
       const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
-      const pr = b.r * (0.88 + 0.12 * Math.sin(time * 0.5 * sp + b.phase));
-      const x = bx * W, y = by * H, r = pr * H * 1.4; // wider for soft overlap/merge
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, hexRgba(b.color, 0.90));
-      g.addColorStop(0.35, hexRgba(b.color, 0.45));
-      g.addColorStop(1, hexRgba(b.color, 0));
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
+      const pr = b.r * (0.9 + 0.1 * Math.sin(time * 0.5 * sp + b.phase));
+      const x = bx * fw, y = by * fh, r = pr * fh;
+      const g = fctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, "rgba(255,255,255,1)");
+      g.addColorStop(0.5, "rgba(255,255,255,0.55)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      fctx.fillStyle = g;
+      fctx.beginPath();
+      fctx.arc(x, y, r, 0, Math.PI * 2);
+      fctx.fill();
     }
-    // Optional bloom: a second, larger, fainter pass for extra glow.
-    if (cfg.glow) {
-      for (const b of blobs) {
-        const by = 0.5 + 0.42 * Math.sin(time * b.rate * sp + b.phase);
-        const bx = b.bx + b.drift * Math.sin(time * 0.13 * sp + b.phase * 1.7);
-        const x = bx * W, y = by * H, r = b.r * H * 2.3;
-        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, hexRgba(b.color, 0.16));
-        g.addColorStop(1, hexRgba(b.color, 0));
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
+
+    // 2) Threshold + colorize into a lava "skin".
+    const img = fctx.getImageData(0, 0, fw, fh);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = d[i]; // red = accumulated intensity
+      if (v >= T) {
+        const c = ramp[v];
+        d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+      } else {
+        d[i + 3] = 0;
       }
     }
+    fctx.globalCompositeOperation = "source-over";
+    fctx.putImageData(img, 0, 0);
+
+    // 3) Compose onto the visible canvas.
     ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#08070c";
+    ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    if (cfg.glow) {
+      // Visible halo: the lava skin drawn larger + fainter, additive.
+      const pad = Math.min(W, H) * 0.06;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(field, -pad, -pad, W + pad * 2, H + pad * 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(field, 0, 0, W, H); // upscale → smooth gooey edges
   }
 
-  // ~30fps cap — smooth enough for lava, easy on the CPU (off-page rAF is throttled
-  // by WKWebView anyway, so the lamp pauses when its carousel page isn't shown).
+  // ~30fps cap.
   let last = 0;
   function loop(t) {
     if (t - last >= 33) { last = t; draw(t); }
