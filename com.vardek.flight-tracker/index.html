@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a10;
+    color: #e6e9ef;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #cards { display: grid; height: 100vh; width: 100vw; gap: 2px; background: #0a0a10; }
+
+  /* Layout templates + per-layout scale — fewer flights = bigger boxes = bigger text.
+     ponytail: hand-tuned scale constants, not measured; nudge if a box looks cramped. */
+  #cards.layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; --scale: 1; }
+  #cards.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; --scale: 0.72; }
+  #cards.layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.58; }
+  #cards.layout-3 .card:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
+  #cards.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.48; }
+
+  .card {
+    position: relative;
+    padding: calc(var(--scale) * 32px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: calc(var(--scale) * 18px);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: calc(var(--scale) * 12px);
+  }
+
+  .title {
+    font-size: calc(var(--scale) * 42px);
+    font-weight: 700;
+    border-bottom: calc(var(--scale) * 2px) solid #7aa2f7;
+    padding-bottom: calc(var(--scale) * 6px);
+    display: inline-block;
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+
+  .route-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .iata { font-size: calc(var(--scale) * 84px); font-weight: 600; line-height: 1; }
+  .time { font-size: calc(var(--scale) * 20px); color: #5a6888; }
+
+  .bar-wrap { position: relative; height: calc(var(--scale) * 3px); background: rgba(122,162,247,0.25); border-radius: 2px; }
+  .bar-dot { position: absolute; top: 50%; width: calc(var(--scale) * 10px); height: calc(var(--scale) * 10px); background: #7aa2f7; border-radius: 50%; transform: translate(-50%, -50%); }
+  .bar-plane { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: calc(var(--scale) * 26px); color: #e6e9ef; }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--scale) * 16px); }
+  .stat-label { font-size: calc(var(--scale) * 15px); color: #5a6888; }
+  .stat-value { font-size: calc(var(--scale) * 34px); font-weight: 600; }
+
+  .center-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: calc(var(--scale) * 26px); color: #8089a6; }
+  .error-msg { position: absolute; bottom: calc(var(--scale) * 12px); left: calc(var(--scale) * 32px); font-size: calc(var(--scale) * 15px); color: #ff453a; }
+</style>
+</head>
+<body>
+<div id="cards"></div>
+<script src="flights.js"></script>
+<script type="module">
+  import { xemd } from '/sdk/widget-sdk.js';
+  const { parseCodes, parseFlight, fmtTime, routeProgress } = globalThis.Flights;
+
+  function escapeHtml(str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  const defaults = { flightCodes: "UA804" };
+  let cfg = Object.assign({}, defaults);
+  let codes = [];
+  let flightsByCode = {};
+  let errorByCode = {};
+  let loading = true;
+
+  function buildUrl(code) {
+    return `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(code)}?withLocation=true`;
+  }
+
+  async function fetchOne(code) {
+    try {
+      const res = await xemd.proxy.fetch(buildUrl(code), {
+        headers: {
+          "X-RapidAPI-Key": "{{secret:AERODATABOX_KEY}}",
+          "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
+        },
+      });
+      if (res.ok) {
+        flightsByCode[code] = parseFlight(await res.json());
+        errorByCode[code] = null;
+      } else {
+        errorByCode[code] = `HTTP ${res.status}`;
+      }
+    } catch (err) {
+      errorByCode[code] = "offline";
+    }
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // One fetch per configured flight per refresh tick — AeroDataBox/RapidAPI
+  // free tiers meter per-minute and per-month. Sequential with a stagger
+  // (not Promise.all) — firing all 4 at once can trip a per-second burst
+  // limit even when the daily/monthly quota has plenty of room left.
+  async function refresh() {
+    codes = parseCodes(cfg.flightCodes);
+    if (codes.length === 0) {
+      loading = false;
+      render();
+      return;
+    }
+    for (let i = 0; i < codes.length; i++) {
+      if (i > 0) await sleep(1200);
+      await fetchOne(codes[i]);
+      loading = false;
+      render();
+    }
+  }
+
+  function cardHtml(code) {
+    const flight = flightsByCode[code];
+    const err = errorByCode[code];
+    const title = escapeHtml((flight && flight.airline) ? `${flight.airline} ${code}` : code);
+
+    if (!flight) {
+      return `<div class="card">
+        <div class="title">${title}</div>
+        <div class="center-msg">${escapeHtml(err ? `${code} — ${err}` : "Loading…")}</div>
+      </div>`;
+    }
+
+    const progress = routeProgress(flight.depLatLon, flight.arrLatLon, flight.curLatLon);
+    const planeHtml = progress == null ? "" :
+      `<div class="bar-plane" style="left:${(progress * 100).toFixed(1)}%">➤</div>`;
+
+    return `<div class="card">
+      <div class="title">${title}</div>
+      <div class="route-row">
+        <div class="iata">${escapeHtml(flight.depIata)}</div>
+        <div class="iata" style="text-align:right">${escapeHtml(flight.arrIata)}</div>
+      </div>
+      <div class="route-row">
+        <div class="time">departs ${fmtTime(flight.depTime)}</div>
+        <div class="time">arrives ${fmtTime(flight.arrTime)}</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-dot" style="left:0"></div>
+        <div class="bar-dot" style="left:100%"></div>
+        ${planeHtml}
+      </div>
+      <div class="stats">
+        <div><div class="stat-label">AIRCRAFT</div><div class="stat-value">${escapeHtml(flight.aircraft || "—")}</div></div>
+        <div><div class="stat-label">ALTITUDE</div><div class="stat-value">${flight.altitudeFt != null ? Math.round(flight.altitudeFt) + " ft" : "—"}</div></div>
+        <div><div class="stat-label">SPEED</div><div class="stat-value">${flight.speedKt != null ? Math.round(flight.speedKt) + " kt" : "—"}</div></div>
+        <div><div class="stat-label">HEADING</div><div class="stat-value">${flight.headingDeg != null ? Math.round(flight.headingDeg) + "°" : "—"}</div></div>
+      </div>
+      ${err ? `<div class="error-msg">${escapeHtml(err)}</div>` : ""}
+    </div>`;
+  }
+
+  function render() {
+    const container = document.getElementById("cards");
+    if (codes.length === 0) {
+      container.className = "layout-1";
+      container.innerHTML = `<div class="center-msg">${
+        loading ? "Loading…" : "Add flight codes and an API key in Settings"
+      }</div>`;
+      return;
+    }
+    container.className = `layout-${codes.length}`;
+    container.innerHTML = codes.map(cardHtml).join("");
+  }
+
+  xemd.settings.get().then(s => {
+    cfg = Object.assign({}, defaults, s);
+    codes = parseCodes(cfg.flightCodes);
+    render();
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange(s => {
+    cfg = Object.assign({}, defaults, s);
+    refresh();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>

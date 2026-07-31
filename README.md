@@ -19,6 +19,7 @@ widget folder in and rescanning is all it takes.
 | [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
 | [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
+| [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
 
 ### Day/Night Map
 [![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
@@ -37,6 +38,9 @@ widget folder in and rescanning is all it takes.
 
 ### Space Launch Schedule
 [![Space Launch Schedule widget](com.vardek.space-launch/space-launch.png)](com.vardek.space-launch/)
+
+### Flight Tracker
+[![Flight Tracker widget](com.vardek.flight-tracker/flight-tracker-4.png)](com.vardek.flight-tracker/)
 
 ## Install
 
