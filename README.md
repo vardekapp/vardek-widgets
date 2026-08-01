@@ -20,6 +20,7 @@ widget folder in and rescanning is all it takes.
 | [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
 | [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
+| [London Tube](com.vardek.london-tube/) | `com.vardek.london-tube` | 8×2 / 4×2 | Live London Underground/DLR/Elizabeth line arrivals and line status for a chosen station, with a walking-buffer offset and direction/line filters (TfL Unified API, keyless). |
 
 Screenshots live in each widget's own folder/README — click through above.
 

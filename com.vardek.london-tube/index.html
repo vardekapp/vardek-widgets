@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #090d16;
+    color: #f1f5f9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    --accent: #DC241F;
+  }
+
+  /* Two manifest sizes (8x2 full-width, 4x2 half-width) share this file —
+     no fixed design canvas, so vw-relative clamp()s keep text readable at
+     either width instead of a scale-to-fit shrinking everything by half. */
+  #root { height: 100vh; width: 100vw; display: flex; flex-direction: column;
+          padding: clamp(12px, 2vw, 24px); gap: clamp(8px, 1.5vw, 16px); }
+
+  .card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+  }
+
+  #header { display: flex; justify-content: space-between; align-items: center;
+             padding: clamp(10px, 1.6vw, 16px) clamp(14px, 2.4vw, 24px); }
+  #station-name { font-size: clamp(16px, 2.8vw, 28px); font-weight: 700; }
+  #station-sub { font-size: clamp(10px, 1.2vw, 14px); color: #94a3b8; margin-top: 2px; }
+
+  #line-status { display: flex; gap: clamp(4px, 0.8vw, 8px); flex-wrap: wrap; justify-content: flex-end; max-width: 55%; }
+  .status-pill {
+    font-size: clamp(9px, 1vw, 12px); font-weight: 600; padding: 3px 8px; border-radius: 99px;
+    border: 1px solid rgba(255,255,255,0.15); white-space: nowrap;
+  }
+  .status-pill.good { color: #34d399; border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.1); }
+  .status-pill.bad { color: #fbbf24; border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.1); }
+
+  #arrivals { flex: 1; overflow-y: auto; padding: clamp(4px, 0.8vw, 8px);
+              display: flex; flex-direction: column; gap: clamp(4px, 0.8vw, 8px); }
+
+  .arrival-row {
+    display: flex; align-items: center; gap: clamp(6px, 1.4vw, 16px);
+    padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.6vw, 16px); border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .line-chip { width: 6px; align-self: stretch; border-radius: 3px; flex-shrink: 0; }
+  .arrival-line { font-size: clamp(9px, 1.1vw, 13px); font-weight: 700;
+                   width: clamp(60px, 8vw, 120px); flex-shrink: 0; }
+  .arrival-dest { flex: 1; font-size: clamp(12px, 1.7vw, 18px); font-weight: 600;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .arrival-platform { font-size: clamp(9px, 1vw, 13px); color: #64748b;
+                       width: clamp(50px, 7vw, 110px); text-align: right; flex-shrink: 0; }
+  .arrival-eta { font-size: clamp(12px, 1.8vw, 20px); font-weight: 800;
+                 width: clamp(50px, 6vw, 90px); text-align: right; color: var(--accent); flex-shrink: 0; }
+
+  .center-msg { display: flex; align-items: center; justify-content: center; height: 100%;
+                font-size: clamp(13px, 2vw, 22px); color: #8089a6; text-align: center; padding: clamp(12px, 2vw, 24px); }
+
+  #attribution { font-size: clamp(8px, 0.7vw, 11px); color: #475569; text-align: center; padding: 2px 0 0; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="header" class="card">
+    <div>
+      <div id="station-name">—</div>
+      <div id="station-sub"></div>
+    </div>
+    <div id="line-status"></div>
+  </div>
+  <div id="arrivals" class="card"></div>
+  <div id="attribution">Powered by TfL Open Data</div>
+</div>
+<script src="tube.js"></script>
+<script type="module">
+  import { xemd } from '/sdk/widget-sdk.js';
+  const { stationId, lineColor, parseArrivals, parseLineStatuses, fmtCountdown } = globalThis.Tube;
+
+  function escapeHtml(str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  const defaults = { station: "Oxford Circus", direction: "All", lineFilter: "All", walkBuffer: 0, accentColor: "#DC241F" };
+  let cfg = Object.assign({}, defaults);
+  let errorMsg = null;
+
+  function buildArrivalsUrl(stopId) {
+    return "https://api.tfl.gov.uk/StopPoint/" + encodeURIComponent(stopId) + "/Arrivals";
+  }
+  function buildStatusUrl() {
+    return "https://api.tfl.gov.uk/Line/Mode/tube,dlr,elizabeth-line/Status";
+  }
+
+  function renderHeader(statuses) {
+    document.getElementById("station-name").textContent = cfg.station;
+    document.getElementById("station-sub").textContent = errorMsg || "";
+
+    const filtered = cfg.lineFilter === "All"
+      ? statuses
+      : statuses.filter(s => s.name.toLowerCase().includes(cfg.lineFilter.toLowerCase()));
+    const el = document.getElementById("line-status");
+    el.innerHTML = filtered.map(s =>
+      `<span class="status-pill ${s.good ? "good" : "bad"}">${escapeHtml(s.name)}: ${escapeHtml(s.status)}</span>`
+    ).join("");
+  }
+
+  function renderArrivals(list) {
+    const el = document.getElementById("arrivals");
+    if (list.length === 0) {
+      el.innerHTML = `<div class="center-msg">${errorMsg ? escapeHtml(errorMsg) : "No upcoming arrivals"}</div>`;
+      return;
+    }
+    el.innerHTML = list.map(a => `
+      <div class="arrival-row">
+        <div class="line-chip" style="background:${lineColor(a.line)}"></div>
+        <div class="arrival-line">${escapeHtml(a.line)}</div>
+        <div class="arrival-dest">${escapeHtml(a.destination || "—")}</div>
+        <div class="arrival-platform">${escapeHtml(a.platform)}</div>
+        <div class="arrival-eta">${fmtCountdown(a.seconds)}</div>
+      </div>
+    `).join("");
+  }
+
+  async function refresh() {
+    document.body.style.setProperty("--accent", cfg.accentColor || defaults.accentColor);
+    try {
+      const stopId = stationId(cfg.station);
+      if (!stopId) throw new Error(`Unknown station "${cfg.station}"`);
+
+      const [arrivalsRes, statusRes] = await Promise.all([
+        xemd.proxy.fetch(buildArrivalsUrl(stopId)),
+        xemd.proxy.fetch(buildStatusUrl()),
+      ]);
+      if (!arrivalsRes.ok) throw new Error(`HTTP ${arrivalsRes.status}`);
+      if (!statusRes.ok) throw new Error(`HTTP ${statusRes.status}`);
+
+      const arrivals = parseArrivals(await arrivalsRes.json(), {
+        direction: cfg.direction,
+        lineFilter: cfg.lineFilter,
+        walkBufferMin: cfg.walkBuffer,
+      });
+      const statuses = parseLineStatuses(await statusRes.json());
+
+      errorMsg = null;
+      renderHeader(statuses);
+      renderArrivals(arrivals);
+    } catch (err) {
+      errorMsg = err && err.message ? err.message : "offline";
+      renderHeader([]);
+      renderArrivals([]);
+    }
+  }
+
+  xemd.settings.get().then(s => {
+    cfg = Object.assign({}, defaults, s);
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange(s => {
+    cfg = Object.assign({}, defaults, s);
+    refresh();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>
