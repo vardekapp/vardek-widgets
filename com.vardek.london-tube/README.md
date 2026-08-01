@@ -4,10 +4,6 @@ Live London Underground/DLR/Elizabeth line arrivals and line status for a
 chosen station — pick a station from the dropdown, get the next arrivals with
 platform, destination, and countdown, plus a line-status strip at the top.
 
-This is an original Vardek-native rebuild (native `xemd` widget SDK, not the
-iCUE compatibility shim) — not a port of any third-party marketplace package.
-TfL's public API, station names/IDs, and line colors are used directly.
-
 Two sizes: 8×2 (full width) or 4×2 (half width, so another widget can share
 the page) — text scales to fit either.
 
