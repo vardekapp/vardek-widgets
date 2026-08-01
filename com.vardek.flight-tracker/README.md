@@ -3,7 +3,7 @@
 Track up to 4 flights on one 8×2 panel — flight number, route with a live
 great-circle progress marker, departure/arrival times, aircraft type, and live
 altitude/speed/heading when available. Glass-card visual style with a
-configurable accent color (screenshots below predate this style refresh).
+configurable accent color.
 
 The layout adapts automatically to how many flights you configure, each
 getting a proportionally bigger card (and bigger text) the fewer there are:
