@@ -41,7 +41,5 @@ Not intended for time-critical use — treat it as informational only.
 
 ## Attribution
 
-Powered by TfL Open Data (`api.tfl.gov.uk`). Contains OS data © Crown
-copyright and database rights 2016, Geomni UK Map data © and database rights
-2019. Per TfL's developer terms, the credit "Powered by TfL Open Data" is
+Powered by TfL Open Data (`api.tfl.gov.uk`). Per TfL's developer terms, the credit "Powered by TfL Open Data" is
 shown in the widget itself as well as here.
