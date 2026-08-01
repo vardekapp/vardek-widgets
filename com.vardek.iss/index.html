@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #02040a;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  }
   #map { display: block; width: 100vw; height: 100vh; }
 </style>
 </head>
@@ -16,8 +22,6 @@
   import { xemd } from '/sdk/widget-sdk.js';
 
   const W = 2560, H = 720;
-  // wheretheiss.at serves the ISS TLE as JSON ({line1,line2}); keyless, HTTPS.
-  // (Celestrak's gp.php now 403s these requests.)
   const TLE_URL = "https://api.wheretheiss.at/v1/satellites/25544/tles";
   const TRAIL_MS = 45 * 60000;
   const PROJECTION_MS = 90 * 60000;
@@ -33,20 +37,32 @@
   let errorMsg = null;
   let tickHandle = null;
 
+  function roundRect(x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+
   function drawOcean() {
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "#070a14");
-    grad.addColorStop(0.5, "#0d1220");
-    grad.addColorStop(1, "#070a14");
+    const grad = ctx.createRadialGradient(W / 2, H / 2, 100, W / 2, H / 2, W / 1.1);
+    grad.addColorStop(0, "#0b1329");
+    grad.addColorStop(0.6, "#060a17");
+    grad.addColorStop(1, "#02040a");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawLand() {
     if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
-    ctx.fillStyle = "#243049";
-    ctx.strokeStyle = "#3a4a6b";
+    ctx.fillStyle = "rgba(15, 30, 58, 0.45)";
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.22)";
     ctx.lineWidth = 1;
+
     for (const ring of globalThis.LAND) {
       ctx.beginPath();
       ring.forEach(([lon, lat], i) => {
@@ -59,18 +75,61 @@
     }
   }
 
-  function drawPath(points, strokeStyle, lineWidth, dash) {
-    if (points.length < 2) return;
+  function drawGraticule() {
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.04)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 12]);
+
+    for (let lat = -60; lat <= 60; lat += 30) {
+      const y = (90 - lat) / 180 * H;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    for (let lon = -150; lon <= 150; lon += 30) {
+      const x = (lon + 180) / 360 * W;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Equator / Prime Meridian highlight
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+  }
+
+  function drawTrail(now) {
+    if (!cfg.showTrail || !satrec) return;
+    const pts = groundTrack(satrec, now - TRAIL_MS, now, STEP_MS);
+    if (pts.length < 2) return;
+    const proj = pts.map(p => project(p.lon, p.lat, W, H));
+
+    for (let i = 1; i < proj.length; i++) {
+      const p0 = proj[i - 1], p1 = proj[i];
+      if (Math.abs(p1.x - p0.x) > W / 2) continue;
+      const frac = i / (proj.length - 1);
+
+      ctx.strokeStyle = "rgba(251, 191, 36, " + (0.05 + 0.65 * frac) + ")";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawProjection(now) {
+    if (!cfg.showProjection || !satrec) return;
+    const pts = groundTrack(satrec, now, now + PROJECTION_MS, STEP_MS);
+    if (pts.length < 2) return;
+
     ctx.save();
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    ctx.setLineDash(dash || []);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
     ctx.beginPath();
     let prev = null;
-    for (const pt of points) {
+    for (const pt of pts) {
       const p = project(pt.lon, pt.lat, W, H);
       if (prev && Math.abs(p.x - prev.x) > W / 2) {
-        // Wraps across the +/-180 seam — start a new segment instead of connecting.
         ctx.stroke();
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
@@ -85,118 +144,108 @@
     ctx.restore();
   }
 
-  function drawGraticule() {
-    ctx.strokeStyle = "rgba(122,162,247,0.07)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 8]);
-    for (let lat = -60; lat <= 60; lat += 30) {
-      if (lat === 0) continue;
-      const y = (90 - lat) / 180 * H;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-    for (let lon = -150; lon <= 150; lon += 30) {
-      const x = (lon + 180) / 360 * W;
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.strokeStyle = "rgba(122,162,247,0.12)";
-    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
-  }
-
-  function drawTrail(now) {
-    if (!cfg.showTrail || !satrec) return;
-    const pts = groundTrack(satrec, now - TRAIL_MS, now, STEP_MS);
-    if (pts.length < 2) return;
-    const proj = pts.map(p => project(p.lon, p.lat, W, H));
-    for (let i = 1; i < proj.length; i++) {
-      const p0 = proj[i - 1], p1 = proj[i];
-      if (Math.abs(p1.x - p0.x) > W / 2) continue;
-      const frac = i / (proj.length - 1);
-      ctx.strokeStyle = "rgba(255,204,102," + (0.06 + 0.50 * frac) + ")";
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.stroke();
-    }
-  }
-
-  function drawProjection(now) {
-    if (!cfg.showProjection || !satrec) return;
-    drawPath(groundTrack(satrec, now, now + PROJECTION_MS, STEP_MS), "rgba(140,190,255,0.40)", 2.5, [8, 6]);
-  }
-
   function drawIss() {
     if (!current) return;
     const p = project(current.lon, current.lat, W, H);
     const t = Date.now() / 1000;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
 
-    const r = 80;
-    const radGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    radGrad.addColorStop(0, "rgba(255,204,102," + (0.18 + 0.15 * pulse) + ")");
-    radGrad.addColorStop(0.5, "rgba(255,204,102," + (0.05 + 0.04 * pulse) + ")");
-    radGrad.addColorStop(1, "rgba(255,204,102,0)");
-    ctx.fillStyle = radGrad;
-    ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
-
+    // Glowing Radar Target Reticle
     ctx.save();
-    ctx.shadowColor = "#ffcc66";
-    ctx.shadowBlur = 24;
 
-    const bodyW = 20, bodyH = 14;
-    ctx.fillStyle = "#e6e9ef";
-    ctx.beginPath();
-    ctx.roundRect(p.x - bodyW / 2, p.y - bodyH / 2, bodyW, bodyH, 4);
-    ctx.fill();
-
-    ctx.fillStyle = "#ffcc66";
-    const wingW = 16, wingH = 48;
-    ctx.fillRect(p.x - bodyW / 2 - wingW - 3, p.y - wingH / 2, wingW, wingH);
-    ctx.fillRect(p.x + bodyW / 2 + 3, p.y - wingH / 2, wingW, wingH);
-    ctx.shadowBlur = 0;
-
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(p.x - bodyW / 2 - wingW - 3, p.y - wingH / 2, wingW, wingH);
-    ctx.strokeRect(p.x + bodyW / 2 + 3, p.y - wingH / 2, wingW, wingH);
-
-    ctx.strokeStyle = "rgba(0,0,0,0.15)";
-    for (let j = 1; j < 4; j++) {
-      const ly = p.y - wingH / 2 + j * (wingH / 4);
+    // Outer Pulsing Target Rings
+    for (let ring = 0; ring < 2; ring++) {
+      const phase = ((t * 0.7 + ring * 0.5) % 1);
+      const ringR = 12 + phase * 32;
+      const alpha = (1 - phase) * 0.5;
       ctx.beginPath();
-      ctx.moveTo(p.x - bodyW / 2 - wingW - 3, ly);
-      ctx.lineTo(p.x - bodyW / 2 - 3, ly);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p.x + bodyW / 2 + 3, ly);
-      ctx.lineTo(p.x + bodyW / 2 + wingW + 3, ly);
+      ctx.arc(p.x, p.y, ringR, 0, 2 * Math.PI);
+      ctx.strokeStyle = "rgba(251, 191, 36, " + alpha + ")";
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     }
+
+    // Target Crosshair
+    ctx.strokeStyle = "rgba(251, 191, 36, 0.6)";
+    ctx.lineWidth = 1;
+    const cLen = 22;
+    ctx.beginPath(); ctx.moveTo(p.x - cLen, p.y); ctx.lineTo(p.x + cLen, p.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x, p.y - cLen); ctx.lineTo(p.x, p.y + cLen); ctx.stroke();
+
+    // ISS Vehicle Model
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 16;
+
+    const bodyW = 16, bodyH = 10;
+    ctx.fillStyle = "#ffffff";
+    roundRect(p.x - bodyW / 2, p.y - bodyH / 2, bodyW, bodyH, 3);
+    ctx.fill();
+
+    // Solar Wings
+    ctx.fillStyle = "#38bdf8";
+    const wingW = 14, wingH = 38;
+    ctx.fillRect(p.x - bodyW / 2 - wingW - 2, p.y - wingH / 2, wingW, wingH);
+    ctx.fillRect(p.x + bodyW / 2 + 2, p.y - wingH / 2, wingW, wingH);
+    ctx.shadowBlur = 0;
+
+    // Solar Wing Grids
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x - bodyW / 2 - wingW - 2, p.y - wingH / 2, wingW, wingH);
+    ctx.strokeRect(p.x + bodyW / 2 + 2, p.y - wingH / 2, wingW, wingH);
 
     ctx.restore();
   }
 
   function drawTitle() {
-    ctx.font = "bold 25px -apple-system, 'Helvetica Neue', sans-serif";
+    const boxX = 24, boxY = 24, boxW = 320, boxH = 68;
+
+    // Glass panel
+    const grad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
+    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
+
+    ctx.fillStyle = grad;
+    roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1.5;
+    roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.stroke();
+
     ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    if (errorMsg && !current) {
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText("ISS Tracker — " + errorMsg, 24, 38);
-      return;
+    ctx.textBaseline = "middle";
+
+    // Title text
+    ctx.font = "800 20px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText("ISS TRACKER", boxX + 18, boxY + 24);
+
+    // Live Indicator Pulse
+    const liveX = boxX + boxW - 24, liveY = boxY + 24;
+    const t = Date.now() / 1000;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+
+    ctx.beginPath();
+    ctx.arc(liveX, liveY, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = "#34d399";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(liveX, liveY, 4 + pulse * 4, 0, 2 * Math.PI);
+    ctx.strokeStyle = "rgba(52, 211, 153, " + (0.6 - pulse * 0.4) + ")";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Subtitle / Status
+    ctx.font = "600 12px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    if (errorMsg) {
+      ctx.fillStyle = "#f87171";
+      ctx.fillText(errorMsg, boxX + 18, boxY + 46);
+    } else {
+      ctx.fillText("REAL-TIME ORBITAL TELEMETRY", boxX + 18, boxY + 46);
     }
-    if (!current) {
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText("ISS Tracker — acquiring TLE…", 24, 38);
-      return;
-    }
-    ctx.fillStyle = "#e6e9ef";
-    ctx.fillText("ISS Tracker", 24, 38);
-    ctx.strokeStyle = "#7aa2f7";
-    ctx.lineWidth = 2;
-    const tw = ctx.measureText("ISS Tracker").width;
-    ctx.beginPath(); ctx.moveTo(24, 46); ctx.lineTo(24 + tw, 46); ctx.stroke();
   }
 
   function drawHud() {
@@ -207,28 +256,31 @@
     const distUnit = mi ? "mi" : "km";
     const velUnit = mi ? "mph" : "km/h";
 
-    const px = 24, py = H - 150, pw = 340, ph = 126;
+    const px = 24, py = H - 156, pw = 360, ph = 132;
 
-    ctx.fillStyle = "rgba(8,12,20,0.85)";
-    ctx.beginPath();
-    ctx.roundRect(px, py, pw, ph, 10);
+    const grad = ctx.createLinearGradient(px, py, px, py + ph);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.88)");
+    grad.addColorStop(1, "rgba(3, 7, 18, 0.94)");
+
+    ctx.fillStyle = grad;
+    roundRect(px, py, pw, ph, 12);
     ctx.fill();
-    ctx.strokeStyle = "rgba(122,162,247,0.30)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(px, py, pw, ph, 10);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.20)";
+    ctx.lineWidth = 1.5;
+    roundRect(px, py, pw, ph, 12);
     ctx.stroke();
 
     const lx = px + 18, rx = px + pw - 18;
-    let y = py + 28;
+    let y = py + 24;
     const sp = 25;
-    ctx.font = "16px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.font = "600 14px -apple-system, BlinkMacSystemFont, sans-serif";
 
-    function hudRow(label, value, color) {
-      ctx.fillStyle = "#5a6888";
+    function hudRow(label, value, valueColor) {
+      ctx.fillStyle = "#64748b";
       ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
       ctx.fillText(label, lx, y);
-      ctx.fillStyle = color;
+      ctx.fillStyle = valueColor;
       ctx.textAlign = "right";
       ctx.fillText(value, rx, y);
       y += sp;
@@ -236,42 +288,49 @@
 
     const latDir = current.lat >= 0 ? "N" : "S";
     const lonDir = current.lon >= 0 ? "E" : "W";
-    hudRow("LAT", Math.abs(current.lat).toFixed(2) + "° " + latDir, "#e6e9ef");
-    hudRow("LON", Math.abs(current.lon).toFixed(2) + "° " + lonDir, "#e6e9ef");
-    hudRow("ALT", alt.toFixed(0) + " " + distUnit, "#7aa2f7");
-    hudRow("VEL", Math.round(vel).toLocaleString("en") + " " + velUnit, "#7aa2f7");
-
-    if (errorMsg) {
-      ctx.fillStyle = "#5a6888";
-      ctx.textAlign = "left";
-      ctx.font = "13px -apple-system, 'Helvetica Neue', sans-serif";
-      ctx.fillText(errorMsg, lx, y);
-    }
+    hudRow("LATITUDE", Math.abs(current.lat).toFixed(2) + "° " + latDir, "#f8fafc");
+    hudRow("LONGITUDE", Math.abs(current.lon).toFixed(2) + "° " + lonDir, "#f8fafc");
+    hudRow("ALTITUDE", alt.toFixed(1) + " " + distUnit, "#38bdf8");
+    hudRow("VELOCITY", Math.round(vel).toLocaleString("en") + " " + velUnit, "#fbbf24");
   }
 
   function drawLegend() {
     if (!satrec) return;
-    const lx = W - 240, ly = H - 40;
-    ctx.font = "14px -apple-system, 'Helvetica Neue', sans-serif";
+    const boxW = 220, boxH = 64;
+    const lx = W - boxW - 24, ly = H - boxH - 24;
+
+    const grad = ctx.createLinearGradient(lx, ly, lx, ly + boxH);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
+    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
+
+    ctx.fillStyle = grad;
+    roundRect(lx, ly, boxW, boxH, 10);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1;
+    roundRect(lx, ly, boxW, boxH, 10);
+    ctx.stroke();
+
+    ctx.font = "600 12px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
     if (cfg.showTrail) {
-      ctx.strokeStyle = "rgba(255,204,102,0.6)";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([]);
-      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 24, ly); ctx.stroke();
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText("past trail", lx + 32, ly + 4);
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(lx + 16, ly + 22); ctx.lineTo(lx + 40, ly + 22); ctx.stroke();
+      ctx.fillStyle = "#cbd5e1";
+      ctx.fillText("PAST TRAIL (45 MIN)", lx + 48, ly + 22);
     }
 
     if (cfg.showProjection) {
-      ctx.strokeStyle = "rgba(140,190,255,0.6)";
+      ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(lx, ly + 20); ctx.lineTo(lx + 24, ly + 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx + 16, ly + 44); ctx.lineTo(lx + 40, ly + 44); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText("projected path", lx + 32, ly + 24);
+      ctx.fillStyle = "#cbd5e1";
+      ctx.fillText("PROJECTED (90 MIN)", lx + 48, ly + 44);
     }
   }
 
@@ -304,18 +363,17 @@
           satrec = globalThis.satellite.twoline2satrec(j.line1, j.line2);
           errorMsg = null;
         } else {
-          errorMsg = "bad TLE data";
+          errorMsg = "BAD TLE DATA";
         }
       } else {
         errorMsg = `HTTP ${res.status}`;
       }
     } catch (err) {
-      errorMsg = err && err.message ? err.message : "fetch failed";
+      errorMsg = err && err.message ? err.message : "FETCH FAILED";
     }
     tick();
   }
 
-  // Draw an initial ocean+land map immediately so the widget is never blank.
   draw();
 
   xemd.settings.get().then(s => {
