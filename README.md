@@ -21,26 +21,7 @@ widget folder in and rescanning is all it takes.
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
 | [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
 
-### Day/Night Map
-[![Day/Night Map widget](com.vardek.day-night/daynight.png)](com.vardek.day-night/)
-
-### LCD Watch
-[![LCD Watch widget](com.vardek.lcd-watch/lcdclock.png)](com.vardek.lcd-watch/)
-
-### Life Progress
-[![Life Progress widget](com.vardek.life-progress/life-progress.png)](com.vardek.life-progress/)
-
-### Earthquake Monitor
-[![Earthquake Monitor widget](com.vardek.earthquake/earthquake.png)](com.vardek.earthquake/)
-
-### ISS Tracker
-[![ISS Tracker widget](com.vardek.iss/iss.png)](com.vardek.iss/)
-
-### Space Launch Schedule
-[![Space Launch Schedule widget](com.vardek.space-launch/space-launch.png)](com.vardek.space-launch/)
-
-### Flight Tracker
-[![Flight Tracker widget](com.vardek.flight-tracker/flight-tracker-4.png)](com.vardek.flight-tracker/)
+Screenshots live in each widget's own folder/README — click through above.
 
 ## Install
 
