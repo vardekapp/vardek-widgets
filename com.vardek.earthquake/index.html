@@ -3,8 +3,14 @@
 <head>
 <meta charset="utf-8">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-  #map { display: block; width: 100vw; height: 100vh; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #030712;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  }
+  #map { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
 </style>
 </head>
 <body>
@@ -26,27 +32,45 @@
   let selected = null;
 
   const LEGEND_BANDS = [
-    { label: "< M3", color: "#3ad16b" },
+    { label: "< M3", color: "#30d158" },
     { label: "M3–4", color: "#ffd60a" },
     { label: "M4–5", color: "#ff9f0a" },
     { label: "M5–6", color: "#ff453a" },
-    { label: "M6+",  color: "#ff2d95" },
+    { label: "M6+",  color: "#ff375f" },
   ];
 
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255);
+  }
+
+  function roundRect(x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+
   function drawOcean() {
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "#070a14");
-    grad.addColorStop(0.5, "#0d1220");
-    grad.addColorStop(1, "#070a14");
+    const grad = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W / 1.2);
+    grad.addColorStop(0, "#0b1329");
+    grad.addColorStop(0.6, "#060a17");
+    grad.addColorStop(1, "#02040a");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawLand() {
     if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
-    ctx.fillStyle = "#243049";
-    ctx.strokeStyle = "#3a4a6b";
+
+    ctx.fillStyle = "rgba(22, 33, 62, 0.55)";
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
     ctx.lineWidth = 1;
+
     for (const ring of globalThis.LAND) {
       ctx.beginPath();
       ring.forEach(([lon, lat], i) => {
@@ -59,17 +83,12 @@
     }
   }
 
-  function hexToRgb(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    return (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255);
-  }
-
   function drawGraticule() {
-    ctx.strokeStyle = "rgba(122,162,247,0.07)";
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 8]);
+    ctx.setLineDash([4, 12]);
+
     for (let lat = -60; lat <= 60; lat += 30) {
-      if (lat === 0) continue;
       const y = (90 - lat) / 180 * H;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
@@ -78,8 +97,11 @@
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
     ctx.setLineDash([]);
-    ctx.strokeStyle = "rgba(122,162,247,0.12)";
+
+    // Prime meridian & Equator subtle highlight
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
     ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
   }
 
   function drawQuakes() {
@@ -92,9 +114,10 @@
       const r = magRadius(q.mag);
       const color = magColor(q.mag);
 
-      if (q.mag >= 4) {
+      // Glowing aura for higher magnitude quakes
+      if (q.mag >= 3.5) {
         ctx.shadowColor = color;
-        ctx.shadowBlur = Math.min(22, q.mag * 3);
+        ctx.shadowBlur = Math.min(28, q.mag * 4.5);
       }
 
       ctx.beginPath();
@@ -104,97 +127,126 @@
       ctx.shadowBlur = 0;
       ctx.shadowColor = "transparent";
 
-      ctx.strokeStyle = "rgba(0,0,0,0.4)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 1.2;
       ctx.stroke();
 
+      // Pulsing pulse animation for recent quakes (< 1h)
       if (q.timeMs && (now - q.timeMs) < 3600000) {
-        const pulse = 0.5 + 0.5 * Math.sin(t * 3 + q.timeMs * 0.001);
+        const pulse = 0.5 + 0.5 * Math.sin(t * 4 + q.timeMs * 0.001);
         const rgb = hexToRgb(color);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, r + 3 + pulse * 4, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(" + rgb + "," + (0.15 + 0.35 * pulse) + ")";
-        ctx.lineWidth = 1.5;
+        ctx.arc(p.x, p.y, r + 4 + pulse * 6, 0, 2 * Math.PI);
+        ctx.strokeStyle = "rgba(" + rgb + "," + (0.2 + 0.4 * pulse) + ")";
+        ctx.lineWidth = 1.8;
         ctx.stroke();
       }
     }
 
+    // Selected Quake Radar Target Overlay
     if (selected) {
       const p = project(selected.lon, selected.lat, W, H);
       const r = magRadius(selected.mag);
+
       for (let ring = 0; ring < 3; ring++) {
-        const phase = ((t * 0.7 + ring * 0.33) % 1);
-        const ringR = r + 4 + phase * 30;
-        const alpha = (1 - phase) * 0.45;
+        const phase = ((t * 0.8 + ring * 0.33) % 1);
+        const ringR = r + 6 + phase * 36;
+        const alpha = (1 - phase) * 0.6;
         ctx.beginPath();
         ctx.arc(p.x, p.y, ringR, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(255,255,255," + alpha + ")";
-        ctx.lineWidth = Math.max(0.5, 2 - phase * 1.5);
+        ctx.strokeStyle = "rgba(56, 189, 248, " + alpha + ")";
+        ctx.lineWidth = Math.max(0.8, 2.5 - phase * 2);
         ctx.stroke();
       }
+
+      // Crosshair lines on selected quake
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 1;
+      const len = r + 12;
+      ctx.beginPath(); ctx.moveTo(p.x - len, p.y); ctx.lineTo(p.x + len, p.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - len); ctx.lineTo(p.x, p.y + len); ctx.stroke();
     }
   }
 
   function drawTitle() {
-    ctx.font = "bold 25px -apple-system, 'Helvetica Neue', sans-serif";
+    const boxX = 24, boxY = 24, boxW = 420, boxH = 76;
+
+    // Glass panel container
+    const grad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
+    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
+
+    ctx.fillStyle = grad;
+    roundRect(boxX, boxY, boxW, boxH, 14);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1.5;
+    roundRect(boxX, boxY, boxW, boxH, 14);
+    ctx.stroke();
+
     ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
+    ctx.textBaseline = "top";
+
     if (errorMsg && quakes.length === 0) {
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText("Earthquake Monitor — " + errorMsg, 24, 38);
+      ctx.font = "700 20px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("SEISMIC MONITOR — " + errorMsg, boxX + 18, boxY + 26);
       return;
     }
-    ctx.fillStyle = "#e6e9ef";
-    ctx.fillText("Earthquake Monitor", 24, 38);
-    ctx.strokeStyle = "#7aa2f7";
-    ctx.lineWidth = 2;
-    const tw = ctx.measureText("Earthquake Monitor").width;
-    ctx.beginPath(); ctx.moveTo(24, 46); ctx.lineTo(24 + tw, 46); ctx.stroke();
 
-    ctx.font = "16px -apple-system, 'Helvetica Neue', sans-serif";
-    ctx.fillStyle = "#5a6888";
-    const sub = quakes.length + " quakes · M" + cfg.minMagnitude + "+ · last " + cfg.window;
-    ctx.fillText(sub, 24, 66);
+    // Title Header
+    ctx.font = "800 22px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText("EARTHQUAKE MONITOR", boxX + 18, boxY + 16);
+
+    // Live Indicator Dot
+    ctx.beginPath();
+    ctx.arc(boxX + boxW - 24, boxY + 26, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = "#30d158";
+    ctx.fill();
+
+    // Subtitle Stats
+    ctx.font = "600 13px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    const sub = `${quakes.length} EVENTS  ·  MIN M${cfg.minMagnitude}  ·  LAST ${cfg.window.toUpperCase()}`;
+    ctx.fillText(sub, boxX + 18, boxY + 46);
+
     if (errorMsg) {
       ctx.fillStyle = "#ff453a";
-      ctx.fillText(errorMsg, 24 + ctx.measureText(sub).width + 16, 66);
+      ctx.fillText(" • " + errorMsg, boxX + 18 + ctx.measureText(sub).width, boxY + 46);
     }
   }
 
   function drawMagLegend() {
     const pad = 14, rowH = 22;
-    const boxW = 120, boxH = pad * 2 + LEGEND_BANDS.length * rowH - (rowH - 14);
+    const boxW = 126, boxH = pad * 2 + LEGEND_BANDS.length * rowH - 6;
     const x0 = W - boxW - 24, y0 = H - boxH - 24;
 
-    ctx.fillStyle = "rgba(8,12,20,0.85)";
-    roundRect(x0, y0, boxW, boxH, 10);
+    const grad = ctx.createLinearGradient(x0, y0, x0, y0 + boxH);
+    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
+    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
+
+    ctx.fillStyle = grad;
+    roundRect(x0, y0, boxW, boxH, 12);
     ctx.fill();
-    ctx.strokeStyle = "rgba(122,162,247,0.20)";
-    ctx.lineWidth = 1;
-    roundRect(x0, y0, boxW, boxH, 10);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1.5;
+    roundRect(x0, y0, boxW, boxH, 12);
     ctx.stroke();
 
-    ctx.font = "14px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.font = "600 13px -apple-system, BlinkMacSystemFont, sans-serif";
     LEGEND_BANDS.forEach((b, i) => {
       const y = y0 + pad + i * rowH;
       ctx.beginPath();
-      ctx.arc(x0 + pad + 7, y + 7, 6, 0, 2 * Math.PI);
+      ctx.arc(x0 + pad + 6, y + 6, 5, 0, 2 * Math.PI);
       ctx.fillStyle = b.color;
       ctx.fill();
-      ctx.fillStyle = "#8089a6";
-      ctx.textAlign = "left";
-      ctx.fillText(b.label, x0 + pad + 20, y + 12);
-    });
-  }
 
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+      ctx.fillStyle = "#cbd5e1";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(b.label, x0 + pad + 20, y + 6);
+    });
   }
 
   function relativeTime(timeMs) {
@@ -215,37 +267,43 @@
     const lonDir = q.lon >= 0 ? "E" : "W";
 
     const lines = [
-      { text: q.place || "Unknown location", font: "600 16px", color: "#e6e9ef" },
-      { text: "M" + q.mag.toFixed(1) + (typeof q.depth === "number" ? " · depth " + q.depth.toFixed(1) + " km" : ""), font: "14px", color: bandColor },
-      { text: relativeTime(q.timeMs) + " · " + Math.abs(q.lat).toFixed(2) + "° " + latDir + ", " + Math.abs(q.lon).toFixed(2) + "° " + lonDir, font: "14px", color: "#5a6888" },
+      { text: q.place || "Unknown Location", font: "700 16px", color: "#f8fafc" },
+      { text: "M" + q.mag.toFixed(1) + (typeof q.depth === "number" ? "  ·  Depth " + q.depth.toFixed(1) + " km" : ""), font: "600 14px", color: bandColor },
+      { text: relativeTime(q.timeMs) + "  ·  " + Math.abs(q.lat).toFixed(2) + "°" + latDir + ", " + Math.abs(q.lon).toFixed(2) + "°" + lonDir, font: "500 13px", color: "#94a3b8" },
     ];
 
-    ctx.font = "600 16px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.font = "700 16px -apple-system, BlinkMacSystemFont, sans-serif";
     let maxW = 0;
     for (const l of lines) {
-      ctx.font = l.font + " -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.font = l.font + " -apple-system, BlinkMacSystemFont, sans-serif";
       maxW = Math.max(maxW, ctx.measureText(l.text).width);
     }
 
-    const pw = maxW + 32, ph = lines.length * 24 + 20;
-    let x = p.x + 20, y = p.y - ph - 20;
-    x = Math.max(8, Math.min(W - pw - 8, x));
-    y = Math.max(8, Math.min(H - ph - 8, y));
+    const pw = maxW + 36, ph = lines.length * 24 + 18;
+    let x = p.x + 24, y = p.y - ph - 20;
+    x = Math.max(12, Math.min(W - pw - 12, x));
+    y = Math.max(12, Math.min(H - ph - 12, y));
 
-    ctx.fillStyle = "rgba(8,12,20,0.92)";
-    roundRect(x, y, pw, ph, 10);
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 18;
+    roundRect(x, y, pw, ph, 12);
     ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "transparent";
+
     const rgb = hexToRgb(bandColor);
-    ctx.strokeStyle = "rgba(" + rgb + ",0.35)";
-    ctx.lineWidth = 1;
-    roundRect(x, y, pw, ph, 10);
+    ctx.strokeStyle = "rgba(" + rgb + ",0.5)";
+    ctx.lineWidth = 1.5;
+    roundRect(x, y, pw, ph, 12);
     ctx.stroke();
 
     ctx.textAlign = "left";
+    ctx.textBaseline = "top";
     lines.forEach((l, i) => {
-      ctx.font = l.font + " -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.font = l.font + " -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.fillStyle = l.color;
-      ctx.fillText(l.text, x + 16, y + 24 + i * 24);
+      ctx.fillText(l.text, x + 18, y + 14 + i * 24);
     });
   }
 
@@ -267,7 +325,7 @@
     for (const q of quakes) {
       const p = project(q.lon, q.lat, W, H);
       const dist = Math.hypot(p.x - cx, p.y - cy);
-      const hit = magRadius(q.mag) + 8;
+      const hit = magRadius(q.mag) + 10;
       if (dist <= hit && dist < bestDist) {
         best = q;
         bestDist = dist;
