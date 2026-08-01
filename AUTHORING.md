@@ -46,7 +46,7 @@ folder name.
 | `sizes` | yes | Allowed footprints on the 8×2 grid. `cols` 1–8, `rows` 1–2. |
 | `canvas` | optional | Logical px the entry renders at; scaled to the slot. |
 | `subscriptions` | optional | Data channels (`sensors`, `config`, …). `[]` for none. |
-| `settingsSchema` | optional | User-editable settings; Admin builds a form from it. Types: `boolean`, `string`, `number`, `enum` (with `values`). |
+| `settingsSchema` | optional | User-editable settings; Admin builds a form from it. Types: `boolean`, `string`, `number`, `enum` (with `values`), `color` (native color picker, value is a `#rrggbb` hex string). |
 | `permissions` | optional | `{ "proxy": ["https://api.example.com/**"], "secrets": ["MY_KEY"] }` — see Network below. |
 | `refreshInterval` | optional | Seconds; fires an `onRefresh` tick. |
 

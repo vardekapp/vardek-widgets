@@ -2,7 +2,8 @@
 
 Track up to 4 flights on one 8×2 panel — flight number, route with a live
 great-circle progress marker, departure/arrival times, aircraft type, and live
-altitude/speed/heading when available.
+altitude/speed/heading when available. Glass-card visual style with a
+configurable accent color (screenshots below predate this style refresh).
 
 The layout adapts automatically to how many flights you configure, each
 getting a proportionally bigger card (and bigger text) the fewer there are:
@@ -21,10 +22,11 @@ getting a proportionally bigger card (and bigger text) the fewer there are:
 
 ## Settings
 
-| Key               | Type   | Default | Description                                    |
-|-------------------|--------|---------|--------------------------------------------------|
-| `flightCodes`     | string | `UA804` | Comma-separated flight numbers (IATA or ICAO), up to 4 |
-| `AERODATABOX_KEY` | secret | —       | Your AeroDataBox API key (via RapidAPI)          |
+| Key               | Type   | Default   | Description                                    |
+|-------------------|--------|-----------|--------------------------------------------------|
+| `flightCodes`     | string | `UA804`   | Comma-separated flight numbers (IATA or ICAO), up to 4 |
+| `accentColor`     | color  | `#38bdf8` | Accent color for the status badge, progress bar, and plane marker |
+| `AERODATABOX_KEY` | secret | —         | Your AeroDataBox API key (via RapidAPI)          |
 
 ## Getting a free API key
 

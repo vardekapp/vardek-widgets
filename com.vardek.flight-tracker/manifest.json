@@ -14,6 +14,7 @@
   },
   "settingsSchema": {
     "flightCodes": { "type": "string", "label": "Flight codes (comma-separated, up to 4)", "default": "UA804" },
+    "accentColor": { "type": "color", "label": "Accent color", "default": "#38bdf8" },
     "AERODATABOX_KEY": { "type": "secret", "label": "AeroDataBox API Key (RapidAPI)" }
   }
 }

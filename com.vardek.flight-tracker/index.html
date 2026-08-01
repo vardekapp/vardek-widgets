@@ -6,59 +6,212 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: #0a0a10;
-    color: #e6e9ef;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #090d16;
+    color: #f1f5f9;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
     height: 100vh;
     overflow: hidden;
+    --accent: #38bdf8;
   }
 
-  #cards { display: grid; height: 100vh; width: 100vw; gap: 2px; background: #0a0a10; }
+  #cards {
+    display: grid;
+    height: 100vh;
+    width: 100vw;
+    gap: 12px;
+    padding: 12px;
+    background: #090d16;
+  }
 
-  /* Layout templates + per-layout scale — fewer flights = bigger boxes = bigger text.
-     ponytail: hand-tuned scale constants, not measured; nudge if a box looks cramped. */
+  /* Dynamic Layout Templates */
   #cards.layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; --scale: 1; }
-  #cards.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; --scale: 0.72; }
-  #cards.layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.58; }
+  #cards.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; --scale: 0.75; }
+  #cards.layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.62; }
   #cards.layout-3 .card:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
-  #cards.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.48; }
+  #cards.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; --scale: 0.52; }
 
   .card {
     position: relative;
-    padding: calc(var(--scale) * 32px);
+    padding: calc(var(--scale) * 36px);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: calc(var(--scale) * 18px);
+    justify-content: space-between;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.14);
-    border-radius: calc(var(--scale) * 12px);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: calc(var(--scale) * 20px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .title {
-    font-size: calc(var(--scale) * 42px);
+    font-size: calc(var(--scale) * 32px);
     font-weight: 700;
-    border-bottom: calc(var(--scale) * 2px) solid #7aa2f7;
-    padding-bottom: calc(var(--scale) * 6px);
-    display: inline-block;
-    align-self: flex-start;
-    white-space: nowrap;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: calc(var(--scale) * 10px);
   }
 
-  .route-row { display: flex; justify-content: space-between; align-items: baseline; }
-  .iata { font-size: calc(var(--scale) * 84px); font-weight: 600; line-height: 1; }
-  .time { font-size: calc(var(--scale) * 20px); color: #5a6888; }
+  .status-badge {
+    font-size: calc(var(--scale) * 13px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: calc(var(--scale) * 4px) calc(var(--scale) * 10px);
+    border-radius: calc(var(--scale) * 20px);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  }
 
-  .bar-wrap { position: relative; height: calc(var(--scale) * 3px); background: rgba(122,162,247,0.25); border-radius: 2px; }
-  .bar-dot { position: absolute; top: 50%; width: calc(var(--scale) * 10px); height: calc(var(--scale) * 10px); background: #7aa2f7; border-radius: 50%; transform: translate(-50%, -50%); }
-  .bar-plane { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: calc(var(--scale) * 26px); color: #e6e9ef; }
+  .route-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
 
-  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--scale) * 16px); }
-  .stat-label { font-size: calc(var(--scale) * 15px); color: #5a6888; }
-  .stat-value { font-size: calc(var(--scale) * 34px); font-weight: 600; }
+  .route-block {
+    display: flex;
+    flex-direction: column;
+  }
 
-  .center-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: calc(var(--scale) * 26px); color: #8089a6; }
-  .error-msg { position: absolute; bottom: calc(var(--scale) * 12px); left: calc(var(--scale) * 32px); font-size: calc(var(--scale) * 15px); color: #ff453a; }
+  .route-block.right {
+    align-items: flex-end;
+  }
+
+  .route-plane {
+    font-size: calc(var(--scale) * 28px);
+    color: #64748b;
+    transform: rotate(0deg);
+    align-self: center;
+    margin-bottom: calc(var(--scale) * 18px);
+  }
+
+  .iata {
+    font-size: calc(var(--scale) * 76px);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.03em;
+    background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .time {
+    font-size: calc(var(--scale) * 18px);
+    color: #94a3b8;
+    font-weight: 500;
+    margin-top: calc(var(--scale) * 6px);
+  }
+
+  .time span {
+    color: #f1f5f9;
+    font-weight: 600;
+  }
+
+  /* Enhanced Route Progress Bar */
+  .bar-container {
+    padding: calc(var(--scale) * 8px) 0;
+  }
+
+  .bar-wrap {
+    position: relative;
+    height: calc(var(--scale) * 4px);
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 99px;
+  }
+
+  .bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #818cf8));
+    border-radius: 99px;
+    box-shadow: 0 0 calc(var(--scale) * 10px) color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+
+  .bar-dot {
+    position: absolute;
+    top: 50%;
+    width: calc(var(--scale) * 8px);
+    height: calc(var(--scale) * 8px);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+
+  .bar-dot.start { background: var(--accent); box-shadow: 0 0 calc(var(--scale) * 8px) var(--accent); }
+  .bar-dot.end { background: #475569; }
+
+  .bar-plane {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(0deg);
+    font-size: calc(var(--scale) * 26px);
+    color: var(--accent);
+    text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+    z-index: 3;
+    transition: left 0.5s ease;
+  }
+
+  /* Telemetry Stats Grid */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: calc(var(--scale) * 12px);
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: calc(var(--scale) * 10px);
+    padding: calc(var(--scale) * 12px);
+  }
+
+  .stat-label {
+    font-size: calc(var(--scale) * 12px);
+    color: #64748b;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: calc(var(--scale) * 4px);
+  }
+
+  .stat-value {
+    font-size: calc(var(--scale) * 22px);
+    font-weight: 700;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .center-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: calc(var(--scale) * 22px);
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .error-msg {
+    position: absolute;
+    bottom: calc(var(--scale) * 12px);
+    left: calc(var(--scale) * 36px);
+    font-size: calc(var(--scale) * 13px);
+    color: #f87171;
+    font-weight: 500;
+  }
 </style>
 </head>
 <body>
@@ -73,7 +226,7 @@
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  const defaults = { flightCodes: "UA804" };
+  const defaults = { flightCodes: "UA804", accentColor: "#38bdf8" };
   let cfg = Object.assign({}, defaults);
   let codes = [];
   let flightsByCode = {};
@@ -131,41 +284,75 @@
 
     if (!flight) {
       return `<div class="card">
-        <div class="title">${title}</div>
+        <div class="header-row">
+          <div class="title">${title}</div>
+        </div>
         <div class="center-msg">${escapeHtml(err ? `${code} — ${err}` : "Loading…")}</div>
       </div>`;
     }
 
     const progress = routeProgress(flight.depLatLon, flight.arrLatLon, flight.curLatLon);
+    const progressPercent = progress != null ? (progress * 100).toFixed(1) : 0;
+
     const planeHtml = progress == null ? "" :
-      `<div class="bar-plane" style="left:${(progress * 100).toFixed(1)}%">➤</div>`;
+      `<div class="bar-plane" style="left:${progressPercent}%">✈</div>`;
+
+    const fillStyle = progress == null ? 'style="width:0%"' : `style="width:${progressPercent}%"`;
+    const statusText = flight.status ? escapeHtml(flight.status) : "En Route";
 
     return `<div class="card">
-      <div class="title">${title}</div>
+      <div class="header-row">
+        <div class="title">${title}</div>
+        <div class="status-badge">${statusText}</div>
+      </div>
+
       <div class="route-row">
-        <div class="iata">${escapeHtml(flight.depIata)}</div>
-        <div class="iata" style="text-align:right">${escapeHtml(flight.arrIata)}</div>
+        <div class="route-block">
+          <div class="iata">${escapeHtml(flight.depIata)}</div>
+          <div class="time">Dep <span>${fmtTime(flight.depTime)}</span></div>
+        </div>
+        <div class="route-plane">✈</div>
+        <div class="route-block right">
+          <div class="iata">${escapeHtml(flight.arrIata)}</div>
+          <div class="time">Arr <span>${fmtTime(flight.arrTime)}</span></div>
+        </div>
       </div>
-      <div class="route-row">
-        <div class="time">departs ${fmtTime(flight.depTime)}</div>
-        <div class="time">arrives ${fmtTime(flight.arrTime)}</div>
+
+      <div class="bar-container">
+        <div class="bar-wrap">
+          <div class="bar-fill" ${fillStyle}></div>
+          <div class="bar-dot start" style="left:0"></div>
+          <div class="bar-dot end" style="left:100%"></div>
+          ${planeHtml}
+        </div>
       </div>
-      <div class="bar-wrap">
-        <div class="bar-dot" style="left:0"></div>
-        <div class="bar-dot" style="left:100%"></div>
-        ${planeHtml}
-      </div>
+
       <div class="stats">
-        <div><div class="stat-label">AIRCRAFT</div><div class="stat-value">${escapeHtml(flight.aircraft || "—")}</div></div>
-        <div><div class="stat-label">ALTITUDE</div><div class="stat-value">${flight.altitudeFt != null ? Math.round(flight.altitudeFt) + " ft" : "—"}</div></div>
-        <div><div class="stat-label">SPEED</div><div class="stat-value">${flight.speedKt != null ? Math.round(flight.speedKt) + " kt" : "—"}</div></div>
-        <div><div class="stat-label">HEADING</div><div class="stat-value">${flight.headingDeg != null ? Math.round(flight.headingDeg) + "°" : "—"}</div></div>
+        <div class="stat-card">
+          <div class="stat-label">AIRCRAFT</div>
+          <div class="stat-value">${escapeHtml(flight.aircraft || "—")}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ALTITUDE</div>
+          <div class="stat-value">${flight.altitudeFt != null ? Math.round(flight.altitudeFt).toLocaleString() + " ft" : "—"}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SPEED</div>
+          <div class="stat-value">${flight.speedKt != null ? Math.round(flight.speedKt) + " kt" : "—"}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">HEADING</div>
+          <div class="stat-value">${flight.headingDeg != null ? Math.round(flight.headingDeg) + "°" : "—"}</div>
+        </div>
       </div>
+
       ${err ? `<div class="error-msg">${escapeHtml(err)}</div>` : ""}
     </div>`;
   }
 
   function render() {
+    document.body.style.setProperty("--accent", cfg.accentColor || defaults.accentColor);
+
     const container = document.getElementById("cards");
     if (codes.length === 0) {
       container.className = "layout-1";
@@ -188,6 +375,7 @@
   xemd.onRefresh(refresh);
   xemd.onSettingsChange(s => {
     cfg = Object.assign({}, defaults, s);
+    render();
     refresh();
   });
 
