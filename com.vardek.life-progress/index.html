@@ -27,21 +27,22 @@
   let cfg = defaults;
 
   function roundRect(x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
     ctx.closePath();
   }
 
   const colorMap = {
-    life:  { main: "#ffcc66", dark: "#b38a30", glow: "255,204,102" },
-    year:  { main: "#7aa2f7", dark: "#4a6cc0", glow: "122,162,247" },
-    month: { main: "#3ad16b", dark: "#1f8a42", glow: "58,209,107" },
-    week:  { main: "#bf5af2", dark: "#8a30c0", glow: "191,90,242" },
-    day:   { main: "#5ac8fa", dark: "#2a88c0", glow: "90,200,250" }
+    life:  { main: "#ffb703", dark: "#fb8500", glow: "255,183,3" },
+    year:  { main: "#38bdf8", dark: "#0284c7", glow: "56,189,248" },
+    month: { main: "#34d399", dark: "#059669", glow: "52,211,153" },
+    week:  { main: "#a78bfa", dark: "#7c3aed", glow: "167,139,250" },
+    day:   { main: "#f472b6", dark: "#db2777", glow: "244,114,182" }
   };
 
   function draw() {
@@ -51,109 +52,126 @@
     const n = bars.length;
     if (n === 0) return;
 
-    const rowH = H / n;
-    const padX = 60;
-    const labelW = 260;
-    const rightW = 300;
-    const trackH = 40;
-    const trackX = padX + labelW;
-    const trackW = W - trackX - rightW - padX;
+    const outerPadX = 40;
+    const outerPadY = 24;
+    const availableH = H - (outerPadY * 2);
+    const gap = Math.min(16, availableH / (n * 4));
+    const cardH = (availableH - (gap * (n - 1))) / n;
+
+    const labelW = 240;
+    const rightW = 320;
+    const cardPadX = 36;
+    const trackH = Math.min(32, cardH * 0.38);
     const t = Date.now() / 1000;
 
     bars.forEach((bar, i) => {
-      const cy = rowH * i + rowH / 2;
+      const cardY = outerPadY + i * (cardH + gap);
+      const cardX = outerPadX;
+      const cardW = W - (outerPadX * 2);
+      const cy = cardY + cardH / 2;
       const colors = colorMap[bar.key] || colorMap.year;
-      const trackY = cy - trackH / 2;
 
-      if (i > 0) {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padX, rowH * i);
-        ctx.lineTo(W - padX, rowH * i);
-        ctx.stroke();
-      }
+      // Card background (glassmorphism panel)
+      const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+      cardGrad.addColorStop(0, "rgba(22, 30, 46, 0.75)");
+      cardGrad.addColorStop(1, "rgba(15, 21, 33, 0.85)");
 
-      // Label in accent color
+      ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = cardGrad;
+      roundRect(cardX, cardY, cardW, cardH, 16);
+      ctx.fill();
+
+      // Card border
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.lineWidth = 1.5;
+      roundRect(cardX, cardY, cardW, cardH, 16);
+      ctx.stroke();
+
+      // Label
+      const labelX = cardX + cardPadX;
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.font = "600 46px -apple-system, 'Helvetica Neue', sans-serif";
+      ctx.font = "700 36px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
       ctx.fillStyle = colors.main;
-      ctx.fillText(bar.label, padX, cy);
+      ctx.fillText(bar.label.toUpperCase(), labelX, cy);
 
-      // Track with inset gradient
+      // Track configuration
+      const trackX = labelX + labelW;
+      const trackW = cardW - (cardPadX * 2) - labelW - rightW;
+      const trackY = cy - trackH / 2;
+
+      // Track inset background
       const trackGrad = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
-      trackGrad.addColorStop(0, "#080c14");
-      trackGrad.addColorStop(1, "#121826");
+      trackGrad.addColorStop(0, "rgba(8, 12, 20, 0.9)");
+      trackGrad.addColorStop(1, "rgba(18, 24, 38, 0.9)");
       ctx.fillStyle = trackGrad;
       roundRect(trackX, trackY, trackW, trackH, trackH / 2);
       ctx.fill();
 
-      // Track inner shadow
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+      // Track subtle inner border
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
       ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(trackX + trackH / 2, trackY + 1);
-      ctx.lineTo(trackX + trackW - trackH / 2, trackY + 1);
+      roundRect(trackX, trackY, trackW, trackH, trackH / 2);
       ctx.stroke();
 
-      // Track bottom rim light
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(trackX + trackH / 2, trackY + trackH - 1);
-      ctx.lineTo(trackX + trackW - trackH / 2, trackY + trackH - 1);
-      ctx.stroke();
-
+      // Filled progress track
       const fillW = Math.max(trackH, trackW * bar.fraction);
       if (bar.fraction > 0) {
         const grad = ctx.createLinearGradient(trackX, 0, trackX + fillW, 0);
         grad.addColorStop(0, colors.dark);
         grad.addColorStop(1, colors.main);
 
-        ctx.shadowColor = colors.main;
-        ctx.shadowBlur = 18;
+        ctx.shadowColor = "rgba(" + colors.glow + ", 0.5)";
+        ctx.shadowBlur = 14;
         ctx.fillStyle = grad;
         roundRect(trackX, trackY, fillW, trackH, trackH / 2);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.shadowColor = "transparent";
 
-        // Glass highlight
+        // Glass reflection overlay
         const glass = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
-        glass.addColorStop(0, "rgba(255, 255, 255, 0.25)");
-        glass.addColorStop(0.35, "rgba(255, 255, 255, 0.07)");
+        glass.addColorStop(0, "rgba(255, 255, 255, 0.35)");
+        glass.addColorStop(0.4, "rgba(255, 255, 255, 0.08)");
         glass.addColorStop(0.5, "rgba(255, 255, 255, 0)");
-        glass.addColorStop(1, "rgba(0, 0, 0, 0.12)");
+        glass.addColorStop(1, "rgba(0, 0, 0, 0.15)");
         ctx.fillStyle = glass;
         roundRect(trackX, trackY, fillW, trackH, trackH / 2);
         ctx.fill();
 
-        // Pulsing leading-edge glow
+        // Pulsing leading edge glow dot
         if (bar.fraction > 0.01 && bar.fraction < 0.99) {
-          const edgeX = trackX + fillW;
-          const pulse = 0.5 + 0.5 * Math.sin(t * 2 + i * 1.2);
-          const r = trackH * 1.8;
+          const edgeX = trackX + fillW - (trackH / 2);
+          const pulse = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.2);
+          const r = trackH * 1.2;
           const radGrad = ctx.createRadialGradient(edgeX, cy, 0, edgeX, cy, r);
-          radGrad.addColorStop(0, "rgba(" + colors.glow + "," + (0.15 + 0.25 * pulse) + ")");
-          radGrad.addColorStop(0.5, "rgba(" + colors.glow + "," + (0.04 + 0.06 * pulse) + ")");
-          radGrad.addColorStop(1, "rgba(0,0,0,0)");
+          radGrad.addColorStop(0, "rgba(" + colors.glow + "," + (0.3 + 0.3 * pulse) + ")");
+          radGrad.addColorStop(0.6, "rgba(" + colors.glow + "," + (0.05 + 0.1 * pulse) + ")");
+          radGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
           ctx.fillStyle = radGrad;
-          ctx.fillRect(edgeX - r, cy - r, r * 2, r * 2);
+          ctx.beginPath();
+          ctx.arc(edgeX, cy, r, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
 
-      // Percentage
+      // Percentage display
+      const rightX = cardX + cardW - cardPadX;
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      ctx.font = "700 44px -apple-system, 'Helvetica Neue', sans-serif";
-      ctx.fillStyle = "#e6e9ef";
-      ctx.fillText(Math.round(bar.fraction * 100) + "%", W - padX, cy - 14);
+      ctx.font = "800 42px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText((bar.fraction * 100).toFixed(1) + "%", rightX, cy - 12);
 
-      // Detail
-      ctx.font = "22px -apple-system, 'Helvetica Neue', sans-serif";
-      ctx.fillStyle = "#5a6380";
-      ctx.fillText(bar.detail, W - padX, cy + 16);
+      // Sub-detail text
+      ctx.font = "500 20px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(bar.detail, rightX, cy + 18);
     });
   }
 
