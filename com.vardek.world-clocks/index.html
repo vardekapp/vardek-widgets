@@ -21,7 +21,7 @@
     padding: clamp(4px, 1vw, 16px);
   }
   .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%); }
-  .clock-slot svg line[id^="hand-"] { transition: transform 0.15s ease-out; }
+  .clock-slot svg .hand { transition: transform 0.15s ease-out; }
   .city-name { color: #eee; font-family: ui-sans-serif, system-ui, sans-serif;
     font-weight: 600; font-size: clamp(11px, 1.6vw, 22px); margin-top: 0.4em; }
   .city-diff { color: #999; font-family: ui-sans-serif, system-ui, sans-serif;
@@ -215,11 +215,11 @@
     }
     svg.appendChild(numerals);
 
-    svg.appendChild(svgEl("line", { id: "hand-hour", x1: 50, y1: 50, x2: 50, y2: 27,
+    svg.appendChild(svgEl("line", { class: "hand hand-hour", x1: 50, y1: 50, x2: 50, y2: 27,
       stroke: "#111", "stroke-width": 3.2, "stroke-linecap": "round" }));
-    svg.appendChild(svgEl("line", { id: "hand-minute", x1: 50, y1: 50, x2: 50, y2: 16,
+    svg.appendChild(svgEl("line", { class: "hand hand-minute", x1: 50, y1: 50, x2: 50, y2: 16,
       stroke: "#111", "stroke-width": 2.2, "stroke-linecap": "round" }));
-    svg.appendChild(svgEl("line", { id: "hand-second", x1: 50, y1: 58, x2: 50, y2: 12,
+    svg.appendChild(svgEl("line", { class: "hand hand-second", x1: 50, y1: 58, x2: 50, y2: 12,
       stroke: "#d81c1c", "stroke-width": 1, "stroke-linecap": "round" }));
 
     svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 2.2, fill: "#111" }));
@@ -238,6 +238,13 @@
     parts.forEach(function (x) { p[x.type] = x.value; });
     var h = Number(p.hour) % 24;
     return { h: h, m: Number(p.minute), s: Number(p.second), ms: now.getMilliseconds() };
+  }
+
+  function setHandAngle(el, deg) {
+    var prev = Number(el.dataset.deg || 0);
+    while (deg < prev) deg += 360;
+    el.dataset.deg = deg;
+    el.setAttribute("transform", "rotate(" + deg + " 50 50)");
   }
 
   function angles(parts) {
@@ -298,12 +305,12 @@
       var cityStr = slot.dataset.city;
       var tz = TZ_BY_CITY[cityStr];
       var a = angles(partsFor(tz));
-      var hourHand = slot.querySelector("#hand-hour");
-      var minHand = slot.querySelector("#hand-minute");
-      var secHand = slot.querySelector("#hand-second");
-      hourHand.setAttribute("transform", "rotate(" + a.hourDeg + " 50 50)");
-      minHand.setAttribute("transform", "rotate(" + a.minDeg + " 50 50)");
-      secHand.setAttribute("transform", "rotate(" + a.secDeg + " 50 50)");
+      var hourHand = slot.querySelector(".hand-hour");
+      var minHand = slot.querySelector(".hand-minute");
+      var secHand = slot.querySelector(".hand-second");
+      setHandAngle(hourHand, a.hourDeg);
+      setHandAngle(minHand, a.minDeg);
+      setHandAngle(secHand, a.secDeg);
       var diffEl = slot.querySelector(".city-diff");
       var delta = offsetMinutes(tz) - baseOffset;
       diffEl.textContent = formatDiff(delta);
