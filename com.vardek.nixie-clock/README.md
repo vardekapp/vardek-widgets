@@ -8,6 +8,7 @@ rather than a flat digital font.
 
 Two sizes: 8×2 (full width) or 4×2 (half width) — the tube bank scales to fit.
 
+![8x2 full width](nixie-clock-8x2.png)
 
 ## Settings
 
