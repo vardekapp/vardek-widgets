@@ -16,20 +16,20 @@
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d");
 
-  const defaults = { use24Hour: true, showLand: true, showTwilight: true };
+  const defaults = { use24Hour: true, showLand: true, showTwilight: true, highlightOffset: 0 };
   let cfg = defaults;
 
   const project = (lon, lat) => ({ x: (lon + 180) / 360 * W, y: (90 - lat) / 180 * H });
 
   function drawOcean() {
-    ctx.fillStyle = "#0b0e1a";
+    ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawLand() {
     if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
-    ctx.fillStyle = "#243049";
-    ctx.strokeStyle = "#3a4a6b";
+    ctx.fillStyle = "rgba(122,162,247,0.12)";
+    ctx.strokeStyle = "rgba(122,162,247,0.28)";
     ctx.lineWidth = 1;
     for (const ring of globalThis.LAND) {
       ctx.beginPath();
@@ -71,26 +71,37 @@
 
   function drawSun(sub) {
     const p = project(sub.lon, sub.lat);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    // Baked radial gradient instead of ctx.shadowBlur — the cockpit stays flat, no shadow API.
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 22);
+    glow.addColorStop(0, "rgba(255,204,102,0.55)");
+    glow.addColorStop(1, "rgba(255,204,102,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 22, 0, 2 * Math.PI); ctx.fill();
+
     ctx.fillStyle = "#ffcc66";
-    ctx.shadowColor = "#ffcc66";
-    ctx.shadowBlur = 20;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI); ctx.fill();
   }
 
   function drawTicks(now) {
-    ctx.font = "18px -apple-system, 'Helvetica Neue', sans-serif";
+    ctx.font = "18px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "center";
     const utcMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const highlight = Number.isFinite(cfg.highlightOffset) ? cfg.highlightOffset : 0;
     // Map spans exactly -180..+180 = UTC offsets -12..+12; +13/+14 are off-map political zones.
     for (let offset = -12; offset <= 12; offset++) {
       const lon = offset * 15;
       const x = (lon + 180) / 360 * W;
-      ctx.strokeStyle = "rgba(122,162,247,0.18)";
-      ctx.lineWidth = 1;
+      const isHighlighted = offset === highlight;
+      ctx.strokeStyle = isHighlighted ? "rgba(122,162,247,0.55)" : "rgba(122,162,247,0.18)";
+      ctx.lineWidth = isHighlighted ? 2 : 1;
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+
+      // Label every 3rd offset to stay glanceable, plus whichever offset is highlighted.
+      const showLabel = isHighlighted || offset % 3 === 0;
+      if (!showLabel) continue;
+      // The two extreme offsets sit exactly on the canvas edge — drop their text (keep the
+      // gridline) instead of clamping it inward, where it used to collide with its neighbor.
+      if (offset === -12 || offset === 12) continue;
 
       let local = (utcMin + offset * 60) % 1440; if (local < 0) local += 1440;
       let hh = Math.floor(local / 60), mm = local % 60;
@@ -101,10 +112,10 @@
         const ap = hh < 12 ? "AM" : "PM"; let h12 = hh % 12; if (h12 === 0) h12 = 12;
         label = `${h12}:${String(mm).padStart(2, "0")} ${ap}`;
       }
-      ctx.fillStyle = "#8089a6";
-      ctx.fillText(label, Math.min(Math.max(x, 40), W - 40), 30);
-      ctx.fillStyle = "#5a6688";
-      ctx.fillText(`UTC${offset >= 0 ? "+" : ""}${offset}`, Math.min(Math.max(x, 40), W - 40), H - 16);
+      ctx.fillStyle = isHighlighted ? "#e6e9ef" : "#8089a6";
+      ctx.fillText(label, x, 30);
+      ctx.fillStyle = isHighlighted ? "#7aa2f7" : "#565f89";
+      ctx.fillText(`UTC${offset >= 0 ? "+" : ""}${offset}`, x, H - 30);
     }
   }
 
