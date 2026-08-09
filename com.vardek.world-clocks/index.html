@@ -20,7 +20,8 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: clamp(4px, 1vw, 16px);
   }
-  .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%); }
+  .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%);
+    filter: drop-shadow(0 2px 10px rgba(0,0,0,.7)) drop-shadow(0 0 1px rgba(255,255,255,.25)); }
   .clock-slot svg .hand { transition: transform 0.15s ease-out; }
   .city-name { color: #eee; font-family: ui-sans-serif, system-ui, sans-serif;
     font-weight: 600; font-size: clamp(11px, 1.6vw, 22px); margin-top: 0.4em; }
@@ -179,10 +180,22 @@
     return el;
   }
 
+  var clockIdCounter = 0;
+
   function buildClockSVG() {
     var svg = svgEl("svg", { viewBox: "0 0 100 100" });
+    var uid = clockIdCounter++;
 
-    svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 48, fill: "#fff", stroke: "#111", "stroke-width": 2 }));
+    var defs = svgEl("defs", {});
+    var bezelGrad = svgEl("linearGradient", { id: "bezel-" + uid, x1: "0%", y1: "0%", x2: "100%", y2: "100%" });
+    bezelGrad.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#e4e4e4" }));
+    bezelGrad.appendChild(svgEl("stop", { offset: "45%", "stop-color": "#8a8a8a" }));
+    bezelGrad.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#2a2a2a" }));
+    defs.appendChild(bezelGrad);
+    svg.appendChild(defs);
+
+    svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 49, fill: "none", stroke: "url(#bezel-" + uid + ")", "stroke-width": 3 }));
+    svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 47, fill: "#fff", stroke: "#111", "stroke-width": 1 }));
 
     var ticks = svgEl("g", {});
     for (var i = 0; i < 60; i++) {
