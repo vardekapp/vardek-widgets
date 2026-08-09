@@ -21,6 +21,7 @@
     padding: clamp(4px, 1vw, 16px);
   }
   .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%); }
+  .clock-slot svg line[id^="hand-"] { transition: transform 0.15s ease-out; }
   .city-name { color: #eee; font-family: ui-sans-serif, system-ui, sans-serif;
     font-weight: 600; font-size: clamp(11px, 1.6vw, 22px); margin-top: 0.4em; }
   .city-diff { color: #999; font-family: ui-sans-serif, system-ui, sans-serif;
@@ -226,6 +227,49 @@
     return svg;
   }
 
+  function partsFor(tz) {
+    var now = new Date();
+    var fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour12: false,
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    var parts = fmt.formatToParts(now);
+    var p = {};
+    parts.forEach(function (x) { p[x.type] = x.value; });
+    var h = Number(p.hour) % 24;
+    return { h: h, m: Number(p.minute), s: Number(p.second), ms: now.getMilliseconds() };
+  }
+
+  function angles(parts) {
+    var secFrac = parts.s + parts.ms / 1000;
+    var minFrac = parts.m + secFrac / 60;
+    var hourFrac = (parts.h % 12) + minFrac / 60;
+    return { hourDeg: hourFrac * 30, minDeg: minFrac * 6, secDeg: secFrac * 6 };
+  }
+
+  function offsetMinutes(tz) {
+    var now = new Date();
+    var fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    var p = {};
+    fmt.formatToParts(now).forEach(function (x) { p[x.type] = x.value; });
+    var asUTC = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day),
+      Number(p.hour) % 24, Number(p.minute), Number(p.second));
+    return Math.round((asUTC - now.getTime()) / 60000);
+  }
+
+  function formatDiff(minutesDelta) {
+    if (minutesDelta === 0) return "";
+    var sign = minutesDelta > 0 ? "+" : "-";
+    var abs = Math.abs(minutesDelta);
+    var hours = abs / 60;
+    var hoursStr = (hours % 1 === 0) ? String(hours) : hours.toFixed(1);
+    return sign + hoursStr + "h";
+  }
+
   function render() {
     var root = document.getElementById("root");
     root.textContent = "";
@@ -245,11 +289,35 @@
     });
   }
 
+  function tick() {
+    var cities = activeCities();
+    if (cities.length === 0) return;
+    var baseOffset = offsetMinutes(TZ_BY_CITY[cities[0]]);
+    var slots = document.querySelectorAll(".clock-slot");
+    slots.forEach(function (slot) {
+      var cityStr = slot.dataset.city;
+      var tz = TZ_BY_CITY[cityStr];
+      var a = angles(partsFor(tz));
+      var hourHand = slot.querySelector("#hand-hour");
+      var minHand = slot.querySelector("#hand-minute");
+      var secHand = slot.querySelector("#hand-second");
+      hourHand.setAttribute("transform", "rotate(" + a.hourDeg + " 50 50)");
+      minHand.setAttribute("transform", "rotate(" + a.minDeg + " 50 50)");
+      secHand.setAttribute("transform", "rotate(" + a.secDeg + " 50 50)");
+      var diffEl = slot.querySelector(".city-diff");
+      var delta = offsetMinutes(tz) - baseOffset;
+      diffEl.textContent = formatDiff(delta);
+    });
+  }
+
   document.addEventListener("vardek:ready", function () {
     cfg = Object.assign({}, defaults, Vardek.settings);
     render();
+    tick();
   });
   render();
+  tick();
+  setInterval(tick, 1000);
 </script>
 </body>
 </html>
