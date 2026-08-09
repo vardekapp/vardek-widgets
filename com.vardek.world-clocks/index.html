@@ -15,6 +15,16 @@
     height: 100vh; width: 100vw;
     display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
   }
+  .clock-slot {
+    flex: 1 1 0; min-width: clamp(140px, 22vw, 420px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: clamp(4px, 1vw, 16px);
+  }
+  .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%); }
+  .city-name { color: #eee; font-family: ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600; font-size: clamp(11px, 1.6vw, 22px); margin-top: 0.4em; }
+  .city-diff { color: #999; font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(9px, 1.1vw, 15px); }
 </style>
 </head>
 <body>
@@ -156,9 +166,83 @@
     });
   }
 
+  function cityLabel(cityString) {
+    var i = cityString.indexOf(",");
+    return i === -1 ? cityString : cityString.slice(0, i);
+  }
+
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS(NS, tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function buildClockSVG() {
+    var svg = svgEl("svg", { viewBox: "0 0 100 100" });
+
+    svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 48, fill: "#fff", stroke: "#111", "stroke-width": 2 }));
+
+    var ticks = svgEl("g", {});
+    for (var i = 0; i < 60; i++) {
+      var angle = i * 6;
+      var isHour = i % 5 === 0;
+      var len = isHour ? 6 : 3;
+      var w = isHour ? 1.6 : 0.7;
+      var line = svgEl("line", {
+        x1: 50, y1: 4, x2: 50, y2: 4 + len,
+        stroke: "#111", "stroke-width": w,
+        transform: "rotate(" + angle + " 50 50)"
+      });
+      ticks.appendChild(line);
+    }
+    svg.appendChild(ticks);
+
+    var numerals = svgEl("g", {});
+    for (var n = 1; n <= 12; n++) {
+      var a = (n * 30 - 90) * Math.PI / 180;
+      var r = 36;
+      var x = 50 + r * Math.cos(a);
+      var y = 50 + r * Math.sin(a);
+      var text = svgEl("text", {
+        x: x, y: y + 3, "text-anchor": "middle",
+        "font-size": 9, "font-family": "ui-sans-serif, system-ui, sans-serif",
+        "font-weight": 700, fill: "#111"
+      });
+      text.textContent = String(n);
+      numerals.appendChild(text);
+    }
+    svg.appendChild(numerals);
+
+    svg.appendChild(svgEl("line", { id: "hand-hour", x1: 50, y1: 50, x2: 50, y2: 27,
+      stroke: "#111", "stroke-width": 3.2, "stroke-linecap": "round" }));
+    svg.appendChild(svgEl("line", { id: "hand-minute", x1: 50, y1: 50, x2: 50, y2: 16,
+      stroke: "#111", "stroke-width": 2.2, "stroke-linecap": "round" }));
+    svg.appendChild(svgEl("line", { id: "hand-second", x1: 50, y1: 58, x2: 50, y2: 12,
+      stroke: "#d81c1c", "stroke-width": 1, "stroke-linecap": "round" }));
+
+    svg.appendChild(svgEl("circle", { cx: 50, cy: 50, r: 2.2, fill: "#111" }));
+
+    return svg;
+  }
+
   function render() {
-    var cities = activeCities();
-    document.getElementById("root").textContent = cities.join(" | ");
+    var root = document.getElementById("root");
+    root.textContent = "";
+    activeCities().forEach(function (cityStr) {
+      var slot = document.createElement("div");
+      slot.className = "clock-slot";
+      slot.dataset.city = cityStr;
+      slot.appendChild(buildClockSVG());
+      var name = document.createElement("div");
+      name.className = "city-name";
+      name.textContent = cityLabel(cityStr);
+      slot.appendChild(name);
+      var diff = document.createElement("div");
+      diff.className = "city-diff";
+      slot.appendChild(diff);
+      root.appendChild(slot);
+    });
   }
 
   document.addEventListener("vardek:ready", function () {
