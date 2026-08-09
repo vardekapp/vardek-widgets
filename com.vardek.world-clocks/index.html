@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>World Clocks</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    height: 100vh; width: 100vw; overflow: hidden;
+    background: #050506;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #root {
+    height: 100vh; width: 100vw;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var TZ_BY_CITY = {
+    "Abu Dhabi, United Arab Emirates": "Asia/Dubai",
+    "Accra, Ghana": "Africa/Accra",
+    "Addis Ababa, Ethiopia": "Africa/Addis_Ababa",
+    "Amman, Jordan": "Asia/Amman",
+    "Amsterdam, Netherlands": "Europe/Amsterdam",
+    "Anchorage, United States": "America/Anchorage",
+    "Astana, Kazakhstan": "Asia/Almaty",
+    "Athens, Greece": "Europe/Athens",
+    "Atlanta, United States": "America/New_York",
+    "Auckland, New Zealand": "Pacific/Auckland",
+    "Baghdad, Iraq": "Asia/Baghdad",
+    "Bali, Indonesia": "Asia/Makassar",
+    "Bangkok, Thailand": "Asia/Bangkok",
+    "Barcelona, Spain": "Europe/Madrid",
+    "Beijing, China": "Asia/Shanghai",
+    "Beirut, Lebanon": "Asia/Beirut",
+    "Belgrade, Serbia": "Europe/Belgrade",
+    "Berlin, Germany": "Europe/Berlin",
+    "Bogotá, Colombia": "America/Bogota",
+    "Boston, United States": "America/New_York",
+    "Brasília, Brazil": "America/Sao_Paulo",
+    "Brisbane, Australia": "Australia/Brisbane",
+    "Brussels, Belgium": "Europe/Brussels",
+    "Bucharest, Romania": "Europe/Bucharest",
+    "Budapest, Hungary": "Europe/Budapest",
+    "Buenos Aires, Argentina": "America/Argentina/Buenos_Aires",
+    "Cairo, Egypt": "Africa/Cairo",
+    "Calgary, Canada": "America/Edmonton",
+    "Cape Town, South Africa": "Africa/Johannesburg",
+    "Caracas, Venezuela": "America/Caracas",
+    "Casablanca, Morocco": "Africa/Casablanca",
+    "Chengdu, China": "Asia/Shanghai",
+    "Chennai, India": "Asia/Kolkata",
+    "Chicago, United States": "America/Chicago",
+    "Colombo, Sri Lanka": "Asia/Colombo",
+    "Copenhagen, Denmark": "Europe/Copenhagen",
+    "Dallas, United States": "America/Chicago",
+    "Dar es Salaam, Tanzania": "Africa/Dar_es_Salaam",
+    "Delhi, India": "Asia/Kolkata",
+    "Denver, United States": "America/Denver",
+    "Dhaka, Bangladesh": "Asia/Dhaka",
+    "Doha, Qatar": "Asia/Qatar",
+    "Dubai, United Arab Emirates": "Asia/Dubai",
+    "Dublin, Ireland": "Europe/Dublin",
+    "Edinburgh, United Kingdom": "Europe/London",
+    "Frankfurt, Germany": "Europe/Berlin",
+    "Guadalajara, Mexico": "America/Mexico_City",
+    "Hanoi, Vietnam": "Asia/Ho_Chi_Minh",
+    "Havana, Cuba": "America/Havana",
+    "Helsinki, Finland": "Europe/Helsinki",
+    "Ho Chi Minh City, Vietnam": "Asia/Ho_Chi_Minh",
+    "Hong Kong": "Asia/Hong_Kong",
+    "Honolulu, United States": "Pacific/Honolulu",
+    "Houston, United States": "America/Chicago",
+    "Istanbul, Turkey": "Europe/Istanbul",
+    "Jakarta, Indonesia": "Asia/Jakarta",
+    "Johannesburg, South Africa": "Africa/Johannesburg",
+    "Kabul, Afghanistan": "Asia/Kabul",
+    "Karachi, Pakistan": "Asia/Karachi",
+    "Kathmandu, Nepal": "Asia/Kathmandu",
+    "Kiev, Ukraine": "Europe/Kyiv",
+    "Kolkata, India": "Asia/Kolkata",
+    "Kuala Lumpur, Malaysia": "Asia/Kuala_Lumpur",
+    "Kuwait City, Kuwait": "Asia/Kuwait",
+    "Lagos, Nigeria": "Africa/Lagos",
+    "Las Vegas, United States": "America/Los_Angeles",
+    "Lima, Peru": "America/Lima",
+    "Lisbon, Portugal": "Europe/Lisbon",
+    "London, United Kingdom": "Europe/London",
+    "Los Angeles, United States": "America/Los_Angeles",
+    "Madrid, Spain": "Europe/Madrid",
+    "Manila, Philippines": "Asia/Manila",
+    "Melbourne, Australia": "Australia/Melbourne",
+    "Mexico City, Mexico": "America/Mexico_City",
+    "Miami, United States": "America/New_York",
+    "Milan, Italy": "Europe/Rome",
+    "Minneapolis, United States": "America/Chicago",
+    "Montreal, Canada": "America/Toronto",
+    "Moscow, Russia": "Europe/Moscow",
+    "Mumbai, India": "Asia/Kolkata",
+    "Munich, Germany": "Europe/Berlin",
+    "Muscat, Oman": "Asia/Muscat",
+    "Nairobi, Kenya": "Africa/Nairobi",
+    "New York, United States": "America/New_York",
+    "Osaka, Japan": "Asia/Tokyo",
+    "Oslo, Norway": "Europe/Oslo",
+    "Paris, France": "Europe/Paris",
+    "Perth, Australia": "Australia/Perth",
+    "Philadelphia, United States": "America/New_York",
+    "Phnom Penh, Cambodia": "Asia/Phnom_Penh",
+    "Phoenix, United States": "America/Phoenix",
+    "Prague, Czech Republic": "Europe/Prague",
+    "Pyongyang, North Korea": "Asia/Pyongyang",
+    "Reykjavik, Iceland": "Atlantic/Reykjavik",
+    "Rio de Janeiro, Brazil": "America/Sao_Paulo",
+    "Riyadh, Saudi Arabia": "Asia/Riyadh",
+    "Rome, Italy": "Europe/Rome",
+    "San Francisco, United States": "America/Los_Angeles",
+    "Santiago, Chile": "America/Santiago",
+    "São Paulo, Brazil": "America/Sao_Paulo",
+    "Seattle, United States": "America/Los_Angeles",
+    "Seoul, South Korea": "Asia/Seoul",
+    "Shanghai, China": "Asia/Shanghai",
+    "Singapore": "Asia/Singapore",
+    "Sofia, Bulgaria": "Europe/Sofia",
+    "St. Petersburg, Russia": "Europe/Moscow",
+    "Stockholm, Sweden": "Europe/Stockholm",
+    "Sydney, Australia": "Australia/Sydney",
+    "Taipei, Taiwan": "Asia/Taipei",
+    "Tashkent, Uzbekistan": "Asia/Tashkent",
+    "Tehran, Iran": "Asia/Tehran",
+    "Tel Aviv, Israel": "Asia/Jerusalem",
+    "Tokyo, Japan": "Asia/Tokyo",
+    "Toronto, Canada": "America/Toronto",
+    "Tunis, Tunisia": "Africa/Tunis",
+    "Ulaanbaatar, Mongolia": "Asia/Ulaanbaatar",
+    "Vancouver, Canada": "America/Vancouver",
+    "Vienna, Austria": "Europe/Vienna",
+    "Warsaw, Poland": "Europe/Warsaw",
+    "Washington DC, United States": "America/New_York",
+    "Wellington, New Zealand": "Pacific/Auckland",
+    "Yangon, Myanmar": "Asia/Yangon",
+    "Zurich, Switzerland": "Europe/Zurich"
+  };
+
+  var defaults = { city1: "New York, United States", city2: "London, United Kingdom",
+                    city3: "Tokyo, Japan", city4: "None" };
+  var cfg = defaults;
+
+  function activeCities() {
+    return [cfg.city1, cfg.city2, cfg.city3, cfg.city4].filter(function (c) {
+      return c && c !== "None";
+    });
+  }
+
+  function render() {
+    var cities = activeCities();
+    document.getElementById("root").textContent = cities.join(" | ");
+  }
+
+  document.addEventListener("vardek:ready", function () {
+    cfg = Object.assign({}, defaults, Vardek.settings);
+    render();
+  });
+  render();
+</script>
+</body>
+</html>
