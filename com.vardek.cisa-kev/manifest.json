@@ -1,0 +1,16 @@
+{
+  "id": "com.vardek.cisa-kev",
+  "name": "CISA Known Exploited Vulnerabilities",
+  "version": "1.0.1",
+  "entry": "index.html",
+  "icon": "🛡️",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "refreshInterval": 1800,
+  "permissions": { "proxy": ["https://www.cisa.gov/**"], "secrets": [] },
+  "settingsSchema": {
+    "sort":           { "type": "enum",    "label": "Sort by",         "default": "dueDate", "values": ["dueDate", "dateAdded"] },
+    "rowCount":        { "type": "enum",    "label": "Rows shown",      "default": "7", "values": ["5", "7", "10"] },
+    "ransomwareOnly":  { "type": "boolean", "label": "Ransomware-flagged only", "default": false }
+  }
+}
