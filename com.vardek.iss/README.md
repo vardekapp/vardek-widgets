@@ -11,13 +11,16 @@ computed locally with [satellite.js](https://github.com/shashwatak/satellite-js)
 - **Satellite icon** marks the current subpoint — a small central body with
   two solar-panel wings and a soft glow.
 - **Trail** (optional) traces the past ~45 minutes of ground track, solid
-  amber.
+  violet.
 - **Projection** (optional) traces the next ~90 minutes of ground track,
-  dashed light blue.
+  dashed indigo.
 - Both paths split into separate segments at the ±180° seam instead of
   drawing a line across the map.
 - Coastlines are optional and drawn from bundled Natural Earth data (no
   network).
+- The **status dot** tracks the actual TLE fetch: indigo while live,
+  amber if a refresh fails but a last-known position is still shown, red
+  if no position has ever been obtained.
 
 ![ISS Tracker widget](iss.png)
 

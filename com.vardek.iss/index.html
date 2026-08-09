@@ -7,8 +7,8 @@
     margin: 0;
     height: 100%;
     overflow: hidden;
-    background: #02040a;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: #0b0e14;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   }
   #map { display: block; width: 100vw; height: 100vh; }
 </style>
@@ -49,18 +49,14 @@
   }
 
   function drawOcean() {
-    const grad = ctx.createRadialGradient(W / 2, H / 2, 100, W / 2, H / 2, W / 1.1);
-    grad.addColorStop(0, "#0b1329");
-    grad.addColorStop(0.6, "#060a17");
-    grad.addColorStop(1, "#02040a");
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#0b0e14";
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawLand() {
     if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
-    ctx.fillStyle = "rgba(15, 30, 58, 0.45)";
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.22)";
+    ctx.fillStyle = "rgba(122,162,247,0.12)";
+    ctx.strokeStyle = "rgba(122,162,247,0.28)";
     ctx.lineWidth = 1;
 
     for (const ring of globalThis.LAND) {
@@ -76,7 +72,7 @@
   }
 
   function drawGraticule() {
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.04)";
+    ctx.strokeStyle = "rgba(122,162,247,0.05)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 12]);
 
@@ -91,7 +87,7 @@
     ctx.setLineDash([]);
 
     // Equator / Prime Meridian highlight
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.strokeStyle = "rgba(122,162,247,0.14)";
     ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
   }
@@ -107,7 +103,7 @@
       if (Math.abs(p1.x - p0.x) > W / 2) continue;
       const frac = i / (proj.length - 1);
 
-      ctx.strokeStyle = "rgba(251, 191, 36, " + (0.05 + 0.65 * frac) + ")";
+      ctx.strokeStyle = "rgba(187,154,247," + (0.05 + 0.65 * frac) + ")";
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(p0.x, p0.y);
@@ -122,7 +118,7 @@
     if (pts.length < 2) return;
 
     ctx.save();
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+    ctx.strokeStyle = "rgba(122,162,247,0.45)";
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
@@ -148,9 +144,7 @@
     if (!current) return;
     const p = project(current.lon, current.lat, W, H);
     const t = Date.now() / 1000;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
 
-    // Glowing Radar Target Reticle
     ctx.save();
 
     // Outer Pulsing Target Rings
@@ -160,33 +154,36 @@
       const alpha = (1 - phase) * 0.5;
       ctx.beginPath();
       ctx.arc(p.x, p.y, ringR, 0, 2 * Math.PI);
-      ctx.strokeStyle = "rgba(251, 191, 36, " + alpha + ")";
+      ctx.strokeStyle = "rgba(122,162,247," + alpha + ")";
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
 
     // Target Crosshair
-    ctx.strokeStyle = "rgba(251, 191, 36, 0.6)";
+    ctx.strokeStyle = "rgba(122,162,247,0.6)";
     ctx.lineWidth = 1;
     const cLen = 22;
     ctx.beginPath(); ctx.moveTo(p.x - cLen, p.y); ctx.lineTo(p.x + cLen, p.y); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(p.x, p.y - cLen); ctx.lineTo(p.x, p.y + cLen); ctx.stroke();
 
-    // ISS Vehicle Model
-    ctx.shadowColor = "#fbbf24";
-    ctx.shadowBlur = 16;
+    // Baked radial glow instead of ctx.shadowBlur — the cockpit stays flat, no shadow API.
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 26);
+    glow.addColorStop(0, "rgba(122,162,247,0.45)");
+    glow.addColorStop(1, "rgba(122,162,247,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, 2 * Math.PI); ctx.fill();
 
+    // ISS Vehicle Model
     const bodyW = 16, bodyH = 10;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#e6e9ef";
     roundRect(p.x - bodyW / 2, p.y - bodyH / 2, bodyW, bodyH, 3);
     ctx.fill();
 
     // Solar Wings
-    ctx.fillStyle = "#38bdf8";
+    ctx.fillStyle = "#bb9af7";
     const wingW = 14, wingH = 38;
     ctx.fillRect(p.x - bodyW / 2 - wingW - 2, p.y - wingH / 2, wingW, wingH);
     ctx.fillRect(p.x + bodyW / 2 + 2, p.y - wingH / 2, wingW, wingH);
-    ctx.shadowBlur = 0;
 
     // Solar Wing Grids
     ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
@@ -197,54 +194,64 @@
     ctx.restore();
   }
 
+  // live: connected, telemetry flowing. stale: last-known position shown, fetch is
+  // currently failing. failed: no TLE has ever been obtained.
+  function liveState() {
+    if (!errorMsg) return "live";
+    return satrec ? "stale" : "failed";
+  }
+
   function drawTitle() {
     const boxX = 24, boxY = 24, boxW = 320, boxH = 68;
 
-    // Glass panel
-    const grad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
-
-    ctx.fillStyle = grad;
-    roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.fillStyle = "#11151f";
+    roundRect(boxX, boxY, boxW, boxH, 10);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1.5;
-    roundRect(boxX, boxY, boxW, boxH, 12);
+    ctx.strokeStyle = "rgba(86,95,137,0.35)";
+    ctx.lineWidth = 1;
+    roundRect(boxX, boxY, boxW, boxH, 10);
     ctx.stroke();
 
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
     // Title text
-    ctx.font = "800 20px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
-    ctx.fillStyle = "#f8fafc";
+    ctx.font = "800 20px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
+    ctx.fillStyle = "#e6e9ef";
     ctx.fillText("ISS TRACKER", boxX + 18, boxY + 24);
 
-    // Live Indicator Pulse
+    // Live Indicator Pulse — color/animation follow the actual connection state
+    // (Live Status Pill pattern: connected / reconnecting / failed), never a fixed color.
+    const state = liveState();
+    const stateColor = state === "live" ? "122,162,247" : state === "stale" ? "224,175,104" : "247,118,142";
     const liveX = boxX + boxW - 24, liveY = boxY + 24;
     const t = Date.now() / 1000;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+    const pulse = state === "failed" ? 0 : 0.5 + 0.5 * Math.sin(t * 3);
 
     ctx.beginPath();
     ctx.arc(liveX, liveY, 4, 0, 2 * Math.PI);
-    ctx.fillStyle = "#34d399";
+    ctx.fillStyle = "rgb(" + stateColor + ")";
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(liveX, liveY, 4 + pulse * 4, 0, 2 * Math.PI);
-    ctx.strokeStyle = "rgba(52, 211, 153, " + (0.6 - pulse * 0.4) + ")";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    if (state !== "failed") {
+      ctx.beginPath();
+      ctx.arc(liveX, liveY, 4 + pulse * 4, 0, 2 * Math.PI);
+      ctx.strokeStyle = "rgba(" + stateColor + "," + (0.6 - pulse * 0.4) + ")";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Subtitle / Status
-    ctx.font = "600 12px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillStyle = "#94a3b8";
-    if (errorMsg) {
-      ctx.fillStyle = "#f87171";
-      ctx.fillText(errorMsg, boxX + 18, boxY + 46);
+    ctx.font = "600 14px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
+    if (state === "live") {
+      ctx.fillStyle = "#8089a6";
+      ctx.fillText(satrec ? "REAL-TIME ORBITAL TELEMETRY" : "CONNECTING…", boxX + 18, boxY + 46);
+    } else if (state === "stale") {
+      ctx.fillStyle = "#e0af68";
+      ctx.fillText("LAST KNOWN POSITION — " + errorMsg, boxX + 18, boxY + 46);
     } else {
-      ctx.fillText("REAL-TIME ORBITAL TELEMETRY", boxX + 18, boxY + 46);
+      ctx.fillStyle = "#f7768e";
+      ctx.fillText(errorMsg, boxX + 18, boxY + 46);
     }
   }
 
@@ -258,29 +265,27 @@
 
     const px = 24, py = H - 156, pw = 360, ph = 132;
 
-    const grad = ctx.createLinearGradient(px, py, px, py + ph);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.88)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.94)");
-
-    ctx.fillStyle = grad;
-    roundRect(px, py, pw, ph, 12);
+    ctx.fillStyle = "#11151f";
+    roundRect(px, py, pw, ph, 10);
     ctx.fill();
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.20)";
-    ctx.lineWidth = 1.5;
-    roundRect(px, py, pw, ph, 12);
+    ctx.strokeStyle = "rgba(86,95,137,0.35)";
+    ctx.lineWidth = 1;
+    roundRect(px, py, pw, ph, 10);
     ctx.stroke();
 
     const lx = px + 18, rx = px + pw - 18;
     let y = py + 24;
     const sp = 25;
-    ctx.font = "600 14px -apple-system, BlinkMacSystemFont, sans-serif";
 
-    function hudRow(label, value, valueColor) {
-      ctx.fillStyle = "#64748b";
+    function hudRow(label, value) {
+      ctx.font = "600 14px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = "#565f89";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(label, lx, y);
-      ctx.fillStyle = valueColor;
+      // The value updates every tick — Mono Numerals Rule.
+      ctx.font = "600 14px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
+      ctx.fillStyle = "#e6e9ef";
       ctx.textAlign = "right";
       ctx.fillText(value, rx, y);
       y += sp;
@@ -288,48 +293,44 @@
 
     const latDir = current.lat >= 0 ? "N" : "S";
     const lonDir = current.lon >= 0 ? "E" : "W";
-    hudRow("LATITUDE", Math.abs(current.lat).toFixed(2) + "° " + latDir, "#f8fafc");
-    hudRow("LONGITUDE", Math.abs(current.lon).toFixed(2) + "° " + lonDir, "#f8fafc");
-    hudRow("ALTITUDE", alt.toFixed(1) + " " + distUnit, "#38bdf8");
-    hudRow("VELOCITY", Math.round(vel).toLocaleString("en") + " " + velUnit, "#fbbf24");
+    hudRow("LATITUDE", Math.abs(current.lat).toFixed(2) + "° " + latDir);
+    hudRow("LONGITUDE", Math.abs(current.lon).toFixed(2) + "° " + lonDir);
+    hudRow("ALTITUDE", alt.toFixed(1) + " " + distUnit);
+    hudRow("VELOCITY", Math.round(vel).toLocaleString("en") + " " + velUnit);
   }
 
   function drawLegend() {
     if (!satrec) return;
-    const boxW = 220, boxH = 64;
+    const boxW = 236, boxH = 64;
     const lx = W - boxW - 24, ly = H - boxH - 24;
 
-    const grad = ctx.createLinearGradient(lx, ly, lx, ly + boxH);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#11151f";
     roundRect(lx, ly, boxW, boxH, 10);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.strokeStyle = "rgba(86,95,137,0.35)";
     ctx.lineWidth = 1;
     roundRect(lx, ly, boxW, boxH, 10);
     ctx.stroke();
 
-    ctx.font = "600 12px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.font = "600 14px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
     if (cfg.showTrail) {
-      ctx.strokeStyle = "#fbbf24";
+      ctx.strokeStyle = "#bb9af7";
       ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(lx + 16, ly + 22); ctx.lineTo(lx + 40, ly + 22); ctx.stroke();
-      ctx.fillStyle = "#cbd5e1";
+      ctx.fillStyle = "#8089a6";
       ctx.fillText("PAST TRAIL (45 MIN)", lx + 48, ly + 22);
     }
 
     if (cfg.showProjection) {
-      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeStyle = "#7aa2f7";
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(lx + 16, ly + 44); ctx.lineTo(lx + 40, ly + 44); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = "#cbd5e1";
+      ctx.fillStyle = "#8089a6";
       ctx.fillText("PROJECTED (90 MIN)", lx + 48, ly + 44);
     }
   }
