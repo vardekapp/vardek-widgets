@@ -99,6 +99,17 @@ blocked. API keys go in `permissions.secrets` — the user enters them in Admin,
 they're stored in the Keychain, and injected server-side (never exposed to
 widget JS). A CSP restricts the widget document. Keep allowlists tight.
 
+**Gotcha: the API host and its CDN host can be different domains.** The
+widget document's CSP (`img-src`/`connect-src`/…) is derived straight from
+`permissions.proxy`, so *every* host your widget's markup loads from must be
+listed — not just the one you call for JSON. Picture of the Day calls
+`*.wikipedia.org` for data but its images are served from
+`upload.wikimedia.org` (`wikipedia.org` vs `wikimedia.org` — easy to miss).
+Forgetting the second host doesn't error on the fetch; the `<img>` just gets
+silently blocked by CSP, which looks exactly like a network/proxy failure.
+Check every host your rendered HTML actually loads from (fonts, images,
+iframes), not just the ones your JS calls directly.
+
 ## Test locally
 
 ```sh

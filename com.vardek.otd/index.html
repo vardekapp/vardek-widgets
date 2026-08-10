@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>On This Day</title>
+<!--
+THESIS: history is a gallery wall, not one spotlight — a whole page of
+placards read at once, turned to the next page, not one fact creeping by.
+OWN-WORLD: Cockpit Tokyo Night gallery wall — near-black ground, engraved
+indigo-hairline plaque cards in a dense grid, SF Mono for year/date/category
+stamps, sans for headline text.
+STORY: user glances at a thin date strip up top, then reads a full wall of
+16 placards at once — category stamp, year, headline, small photo — which
+turns to the next page of 16 on a timer; tapping any placard opens its
+Wikipedia article, tapping a dot jumps straight to that page.
+FIRST VIEWPORT: full 2560×720 panel; a thin top strip (ON THIS DAY label,
+date, category legend); a 4×4 grid of plaque cards filling the remaining
+height; a bottom strip carrying the page-dot rail.
+FORM: Museum Wall Plaque — Rotating Exhibit Spotlight, candidate 7/7 on the
+surface's own resonance-ordered list, seed d8c4959f; revised to a dense
+multi-card gallery-wall composition per user feedback (single-item rotation
+wasted space and read too slowly; a 4×2 grid still under-used the panel).
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md.
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  #panel {
+    position: relative; width: 100vw; height: 100vh;
+    background: #0b0e14;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    color: #e6e9ef;
+    display: flex; flex-direction: column;
+  }
+
+  header { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between;
+    margin: 1.6vh 3.4vw 0; padding-bottom: 1vh; border-bottom: 1px solid rgba(255,255,255,.1);
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
+  header .title { display: flex; align-items: baseline; gap: 12px; }
+  header .kicker { font-size: 14px; font-weight: 600; letter-spacing: .16em; color: #7aa2f7; }
+  header .dateLine { font-size: 14px; font-weight: 600; letter-spacing: .08em; color: #8089a6; }
+  #legend { display: flex; gap: 1vw; font-size: 14px; }
+  #legend span.on { color: #8089a6; }
+  #legend span.off { color: #565f89; opacity: .45; }
+
+  #grid { flex: 1; min-height: 0; margin: 1.4vh 3.4vw; display: grid;
+    grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+    gap: .7vh 1.4vw; }
+
+  .card { position: relative; display: flex; gap: .7vw; align-items: center;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 7px; padding: .3vh .8vw;
+    cursor: pointer; outline: none; overflow: hidden; }
+  .card:focus-visible { border-color: #7aa2f7; }
+  .card .thumb { flex: 0 0 auto; width: 3vw; max-width: 44px; aspect-ratio: 1;
+    object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,.14); }
+  .card .body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .card .top { display: flex; align-items: center; gap: 7px; }
+  .stamp { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 1rem; font-weight: 700; letter-spacing: .06em; }
+  .stamp.events { color: #7aa2f7; } .stamp.births { color: #bb9af7; }
+  .stamp.deaths { color: #8089a6; } .stamp.holidays { color: #565f89; }
+  .card .year { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 1rem; font-weight: 600; color: #565f89; font-variant-numeric: tabular-nums; }
+  .card .headline { margin-top: .2vh; font-size: 1.25rem; line-height: 1.2; color: #e6e9ef;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  #tourFoot { flex: 0 0 auto; margin: 0 3.4vw 1.6vh; display: flex; align-items: center;
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 14px; color: #565f89; letter-spacing: .04em; }
+  #source { flex: 0 0 auto; }
+  #dots { flex: 0 0 auto; margin-left: 22px; display: flex; align-items: center; gap: 6px; }
+  #dots .dot { width: 8px; height: 8px; border-radius: 50%; background: #565f89; cursor: pointer; border: none; padding: 0; }
+  #dots .dot.current { background: #c0caf5; }
+
+  #centered { flex: 1; display: flex; align-items: center; justify-content: center; color: #565f89;
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: 14px;
+    letter-spacing: .08em; padding: 0 4vw; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <header>
+    <div class="title"><span class="kicker">ON THIS DAY</span><span class="dateLine" id="dateLine"></span></div>
+    <div id="legend"></div>
+  </header>
+  <div id="grid"></div>
+  <div id="tourFoot">
+    <span id="source">POWERED BY WIKIPEDIA — ON THIS DAY</span>
+    <div id="dots"></div>
+  </div>
+</div>
+<script src="otd.js"></script>
+<script type="module">
+  import { xemd, escapeHtml } from '/sdk/widget-sdk.js';
+
+  const { sanitizeLang, datePath, parseCategory, buildRotation, categoryLabel, paginate } = Otd;
+  const TYPES = ["events", "births", "deaths", "holidays"];
+  const PAGE_SIZE = 16;
+
+  const dateLineEl = document.getElementById("dateLine");
+  const legendEl = document.getElementById("legend");
+  const gridEl = document.getElementById("grid");
+  const dotsEl = document.getElementById("dots");
+  const tourFoot = document.getElementById("tourFoot");
+
+  const defaults = {
+    lang: "en", show_events: true, show_births: true, show_deaths: true,
+    show_holidays: false, rotate_seconds: "12",
+  };
+  let cfg = Object.assign({}, defaults);
+  let pages = [[]];
+  let pageIndex = 0;
+  let timer = null;
+  let paused = false;
+
+  function monthName(m) {
+    return ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY",
+      "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"][m];
+  }
+
+  function showError(msg) {
+    gridEl.style.display = "none";
+    tourFoot.style.display = "none";
+    let el = document.getElementById("centered");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "centered";
+      document.getElementById("panel").appendChild(el);
+    }
+    el.textContent = msg;
+  }
+
+  function clearError() {
+    const el = document.getElementById("centered");
+    if (el) el.remove();
+    gridEl.style.display = "grid";
+    tourFoot.style.display = "flex";
+  }
+
+  function enabledTypes() {
+    return TYPES.filter((t) => cfg["show_" + t]);
+  }
+
+  function renderLegend() {
+    const enabled = enabledTypes();
+    legendEl.innerHTML = TYPES.map((t) =>
+      `<span class="${enabled.includes(t) ? "on" : "off"}">${categoryLabel(t)}</span>`
+    ).join("");
+  }
+
+  function cardHtml(item) {
+    const year = item.year !== null ? String(item.year) : "TODAY";
+    const thumb = item.thumb
+      ? `<img class="thumb" src="${escapeHtml(item.thumb)}" alt="" onerror="this.remove()">`
+      : "";
+    return `
+      <div class="card" data-url="${escapeHtml(item.url)}" tabindex="0" role="link">
+        ${thumb}
+        <div class="body">
+          <div class="top"><span class="stamp ${item.type}">${categoryLabel(item.type)}</span><span class="year">${escapeHtml(year)}</span></div>
+          <div class="headline">${escapeHtml(item.text)}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderDots() {
+    dotsEl.innerHTML = pages.map((_, i) =>
+      `<button class="dot${i === pageIndex ? " current" : ""}" data-i="${i}" aria-label="Page ${i + 1}"></button>`
+    ).join("");
+  }
+
+  function renderPage() {
+    const items = pages[pageIndex] || [];
+    if (items.length === 0 && pages.length <= 1) {
+      showError("NO ENTRIES FOR TODAY");
+      return;
+    }
+    clearError();
+    gridEl.innerHTML = items.map(cardHtml).join("");
+    renderDots();
+  }
+
+  function goTo(i) {
+    pageIndex = ((i % pages.length) + pages.length) % pages.length;
+    renderPage();
+  }
+
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    const seconds = parseInt(cfg.rotate_seconds, 10) || 12;
+    timer = setInterval(() => {
+      if (!paused && pages.length > 1) goTo(pageIndex + 1);
+    }, seconds * 1000);
+  }
+
+  async function fetchCategory(lang, type, path) {
+    const res = await xemd.proxy.fetch(`https://${lang}.wikipedia.org/api/rest_v1/feed/onthisday/${type}/${path}`);
+    if (!res.ok) return [];
+    return parseCategory(await res.json(), type);
+  }
+
+  async function refresh() {
+    const lang = sanitizeLang(cfg.lang);
+    const enabled = enabledTypes();
+    const today = new Date();
+    dateLineEl.textContent = monthName(today.getUTCMonth()) + " " + today.getUTCDate();
+    renderLegend();
+    if (enabled.length === 0) {
+      pages = [[]];
+      pageIndex = 0;
+      renderPage();
+      return;
+    }
+    let errorMsg = null;
+    let combined = [];
+    try {
+      const path = datePath(today);
+      const dataByType = {};
+      await Promise.all(enabled.map(async (t) => {
+        dataByType[t] = await fetchCategory(lang, t, path);
+      }));
+      combined = buildRotation(dataByType, enabled, 16);
+    } catch (err) {
+      errorMsg = "offline";
+    }
+    pages = paginate(combined, PAGE_SIZE);
+    pageIndex = 0;
+    if (errorMsg && combined.length === 0) {
+      showError("ON THIS DAY — OFFLINE");
+    } else {
+      renderPage();
+    }
+    startTimer();
+  }
+
+  gridEl.addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (card && card.dataset.url) xemd.openLink(card.dataset.url);
+  });
+  gridEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const card = e.target.closest(".card");
+    if (card && card.dataset.url) { e.preventDefault(); xemd.openLink(card.dataset.url); }
+  });
+  gridEl.addEventListener("mouseenter", () => { paused = true; }, true);
+  gridEl.addEventListener("mouseleave", () => { paused = false; }, true);
+
+  dotsEl.addEventListener("click", (e) => {
+    const dot = e.target.closest(".dot");
+    if (dot) goTo(parseInt(dot.dataset.i, 10));
+  });
+
+  xemd.settings.get().then((s) => {
+    cfg = Object.assign({}, defaults, s);
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange((s) => {
+    cfg = Object.assign({}, defaults, s);
+    refresh();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>

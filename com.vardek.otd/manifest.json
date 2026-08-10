@@ -1,0 +1,22 @@
+{
+  "id": "com.vardek.otd",
+  "name": "On This Day",
+  "version": "1.0.5",
+  "entry": "index.html",
+  "icon": "📜",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "refreshInterval": 3600,
+  "permissions": {
+    "proxy": ["https://*.wikipedia.org/**", "https://upload.wikimedia.org/**"],
+    "secrets": []
+  },
+  "settingsSchema": {
+    "lang":           { "type": "string",  "label": "Wikipedia language code (e.g. en, de, fr, ja)", "default": "en" },
+    "show_events":    { "type": "boolean", "label": "Events",                "default": true },
+    "show_births":    { "type": "boolean", "label": "Births",                "default": true },
+    "show_deaths":    { "type": "boolean", "label": "Deaths",                "default": true },
+    "show_holidays":  { "type": "boolean", "label": "Holidays & observances", "default": false },
+    "rotate_seconds": { "type": "enum",    "label": "Page interval (seconds)", "default": "12", "values": ["8", "12", "16", "20"] }
+  }
+}
