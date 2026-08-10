@@ -1,0 +1,17 @@
+{
+  "id": "com.vardek.potd",
+  "name": "Picture of the Day",
+  "version": "1.0.1",
+  "entry": "index.html",
+  "icon": "🖼️",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "refreshInterval": 3600,
+  "permissions": {
+    "proxy": ["https://*.wikipedia.org/**", "https://upload.wikimedia.org/**"],
+    "secrets": []
+  },
+  "settingsSchema": {
+    "lang": { "type": "string", "label": "Wikipedia language code (e.g. en, de, fr, ja)", "default": "en" }
+  }
+}

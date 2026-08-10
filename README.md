@@ -23,6 +23,7 @@ widget folder in and rescanning is all it takes.
 | [Life Progress](com.vardek.life-progress/) | `com.vardek.life-progress` | 8×2 / 4×2 | Horizontal progress bars — life, year, month, week, day. Pure client-side, no network. |
 | [London Tube](com.vardek.london-tube/) | `com.vardek.london-tube` | 8×2 / 4×2 | Live London Underground/DLR/Elizabeth line arrivals and line status for a chosen station, with a walking-buffer offset and direction/line filters (TfL Unified API, keyless). |
 | [Nixie Clock](com.vardek.nixie-clock/) | `com.vardek.nixie-clock` | 8×2 / 4×2 | Glowing nixie-tube-style clock (HH:MM:SS) with a tube-style date line, ghost-digit outlines, warm flicker, and a user-pickable glow color. Local clock, no network. |
+| [Picture of the Day](com.vardek.potd/) | `com.vardek.potd` | 8×2 | Darkroom contact-sheet frame for Wikipedia's daily featured photo — headline, photographer credit, license, and caption in a proof-sheet column, tap to open full resolution on Commons (Wikipedia REST API, keyless). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
 | [World Clocks](com.vardek.world-clocks/) | `com.vardek.world-clocks` | 8×2 / 4×2 | Newsroom-style wall of 2-4 analog clocks (white face, black hands, red sweep) with city labels and time-difference offsets. Local clock, no network. |
 
