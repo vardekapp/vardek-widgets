@@ -93,7 +93,8 @@
   var cfg = defaults;
 
   function applyGlow(hex) {
-    var n = parseInt(hex.slice(1), 16);
+    var valid = typeof hex === "string" && /^#[0-9a-f]{6}$/i.test(hex);
+    var n = parseInt((valid ? hex : defaults.glowColor).slice(1), 16);
     document.documentElement.style.setProperty(
       "--glow-rgb", ((n >> 16) & 255) + ", " + ((n >> 8) & 255) + ", " + (n & 255)
     );
