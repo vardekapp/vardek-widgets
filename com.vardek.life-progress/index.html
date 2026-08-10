@@ -37,20 +37,39 @@
     ctx.closePath();
   }
 
-  const colorMap = {
-    life:  { main: "#ffb703", dark: "#fb8500", glow: "255,183,3" },
-    year:  { main: "#38bdf8", dark: "#0284c7", glow: "56,189,248" },
-    month: { main: "#34d399", dark: "#059669", glow: "52,211,153" },
-    week:  { main: "#a78bfa", dark: "#7c3aed", glow: "167,139,250" },
-    day:   { main: "#f472b6", dark: "#db2777", glow: "244,114,182" }
+  // Cockpit palette (DESIGN.md): Panel Indigo is the primary accent, Panel
+  // Violet the secondary; Life alone escalates to Amber/Red as it nears its
+  // threshold — the one bar where that's a genuine warning, not decoration.
+  const PANEL_INDIGO = "#7aa2f7";
+  const PANEL_VIOLET = "#bb9af7";
+  const PANEL_AMBER = "#e0af68";
+  const PANEL_RED = "#f7768e";
+  const accentFor = (bar) => {
+    if (bar.key === "life") {
+      if (bar.fraction >= 0.9) return PANEL_RED;
+      if (bar.fraction >= 0.75) return PANEL_AMBER;
+      return PANEL_INDIGO;
+    }
+    return bar.key === "year" || bar.key === "month" ? PANEL_INDIGO : PANEL_VIOLET;
   };
+
+  const SANS = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
+  const MONO = "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
+
+  function drawEmptyState() {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "600 14px " + SANS;
+    ctx.fillStyle = "#565f89";
+    ctx.fillText("NO BARS ENABLED — TURN ONE ON IN ADMIN", W / 2, H / 2);
+  }
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
     const bars = globalThis.Progress.progressData(Date.now(), cfg);
     const n = bars.length;
-    if (n === 0) return;
+    if (n === 0) { drawEmptyState(); return; }
 
     const outerPadX = 40;
     const outerPadY = 24;
@@ -62,42 +81,29 @@
     const rightW = 320;
     const cardPadX = 36;
     const trackH = Math.min(32, cardH * 0.38);
-    const t = Date.now() / 1000;
 
     bars.forEach((bar, i) => {
       const cardY = outerPadY + i * (cardH + gap);
       const cardX = outerPadX;
       const cardW = W - (outerPadX * 2);
       const cy = cardY + cardH / 2;
-      const colors = colorMap[bar.key] || colorMap.year;
+      const accent = accentFor(bar);
 
-      // Card background (glassmorphism panel)
-      const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
-      cardGrad.addColorStop(0, "rgba(22, 30, 46, 0.75)");
-      cardGrad.addColorStop(1, "rgba(15, 21, 33, 0.85)");
-
-      ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-      ctx.shadowBlur = 16;
-      ctx.shadowOffsetY = 6;
-      ctx.fillStyle = cardGrad;
+      // Card: flat, opaque cockpit cell — no gradient, no shadow.
+      ctx.fillStyle = "#11151f";
       roundRect(cardX, cardY, cardW, cardH, 16);
       ctx.fill();
-
-      // Card border
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.shadowColor = "transparent";
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#1c2233";
+      ctx.lineWidth = 1;
       roundRect(cardX, cardY, cardW, cardH, 16);
       ctx.stroke();
 
-      // Label
+      // Label — Panel Title voice (sans, 700, 1.6rem step), tinted by accent.
       const labelX = cardX + cardPadX;
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.font = "700 36px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
-      ctx.fillStyle = colors.main;
+      ctx.font = "700 25.6px " + SANS;
+      ctx.fillStyle = accent;
       ctx.fillText(bar.label.toUpperCase(), labelX, cy);
 
       // Track configuration
@@ -105,72 +111,30 @@
       const trackW = cardW - (cardPadX * 2) - labelW - rightW;
       const trackY = cy - trackH / 2;
 
-      // Track inset background
-      const trackGrad = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
-      trackGrad.addColorStop(0, "rgba(8, 12, 20, 0.9)");
-      trackGrad.addColorStop(1, "rgba(18, 24, 38, 0.9)");
-      ctx.fillStyle = trackGrad;
+      // Track inset — flat, opaque.
+      ctx.fillStyle = "#080a10";
       roundRect(trackX, trackY, trackW, trackH, trackH / 2);
       ctx.fill();
 
-      // Track subtle inner border
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
-      ctx.lineWidth = 1.5;
-      roundRect(trackX, trackY, trackW, trackH, trackH / 2);
-      ctx.stroke();
-
-      // Filled progress track
+      // Filled progress — flat accent fill, no gradient, no glow.
       const fillW = Math.max(trackH, trackW * bar.fraction);
       if (bar.fraction > 0) {
-        const grad = ctx.createLinearGradient(trackX, 0, trackX + fillW, 0);
-        grad.addColorStop(0, colors.dark);
-        grad.addColorStop(1, colors.main);
-
-        ctx.shadowColor = "rgba(" + colors.glow + ", 0.5)";
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = grad;
+        ctx.fillStyle = accent;
         roundRect(trackX, trackY, fillW, trackH, trackH / 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = "transparent";
-
-        // Glass reflection overlay
-        const glass = ctx.createLinearGradient(0, trackY, 0, trackY + trackH);
-        glass.addColorStop(0, "rgba(255, 255, 255, 0.35)");
-        glass.addColorStop(0.4, "rgba(255, 255, 255, 0.08)");
-        glass.addColorStop(0.5, "rgba(255, 255, 255, 0)");
-        glass.addColorStop(1, "rgba(0, 0, 0, 0.15)");
-        ctx.fillStyle = glass;
-        roundRect(trackX, trackY, fillW, trackH, trackH / 2);
-        ctx.fill();
-
-        // Pulsing leading edge glow dot
-        if (bar.fraction > 0.01 && bar.fraction < 0.99) {
-          const edgeX = trackX + fillW - (trackH / 2);
-          const pulse = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.2);
-          const r = trackH * 1.2;
-          const radGrad = ctx.createRadialGradient(edgeX, cy, 0, edgeX, cy, r);
-          radGrad.addColorStop(0, "rgba(" + colors.glow + "," + (0.3 + 0.3 * pulse) + ")");
-          radGrad.addColorStop(0.6, "rgba(" + colors.glow + "," + (0.05 + 0.1 * pulse) + ")");
-          radGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-          ctx.fillStyle = radGrad;
-          ctx.beginPath();
-          ctx.arc(edgeX, cy, r, 0, Math.PI * 2);
-          ctx.fill();
-        }
       }
 
-      // Percentage display
+      // Percentage — the Mono Numerals Rule: every live-updating value is SF Mono.
       const rightX = cardX + cardW - cardPadX;
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      ctx.font = "800 42px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
-      ctx.fillStyle = "#f8fafc";
+      ctx.font = "600 41.6px " + MONO;
+      ctx.fillStyle = "#e6e9ef";
       ctx.fillText((bar.fraction * 100).toFixed(1) + "%", rightX, cy - 12);
 
       // Sub-detail text
-      ctx.font = "500 20px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
-      ctx.fillStyle = "#94a3b8";
+      ctx.font = "500 16px " + SANS;
+      ctx.fillStyle = "#8089a6";
       ctx.fillText(bar.detail, rightX, cy + 18);
     });
   }
