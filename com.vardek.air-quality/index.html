@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Air Quality</title>
+<!--
+THESIS: Air quality lives on one instrument, not a dashboard grid — a single
+glance reads overall severity and its six causes at once.
+OWN-WORLD: Cockpit Tokyo Night — near-black flat panel, indigo/violet
+baseline, amber/red only at real thresholds, SF Mono for every live value,
+the signature Ring Gauge scaled up as the hero.
+STORY: user sees the city, the one AQI number and its color, and six
+pollutant spokes radiating from it — reads which pollutant drives the number
+in the same glance.
+FIRST VIEWPORT: full 2560×720 panel; header strip (city + updated time)
+top-left; giant Ring Gauge centered; three pollutant mini-gauges each side
+connected to center by tone-colored spokes.
+FORM: Radial Orbital HUD, candidate 5/7 on the surface's own
+resonance-ordered list, seed 62fc0381.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md.
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  #panel {
+    position: relative; width: 100vw; height: 100vh;
+    background: #0b0e14;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    color: #e6e9ef;
+  }
+
+  header { position: absolute; top: 0; left: 0; right: 0; display: flex;
+    align-items: baseline; justify-content: space-between;
+    margin: 2.2vh 4vw 0; padding-bottom: 1vh;
+    border-bottom: 1px solid rgba(255,255,255,.1); }
+  header .city { font-weight: 700; font-size: clamp(16px, 1.6vw, 25.6px); letter-spacing: .3px; }
+  header .city .sub { color: #8089a6; font-weight: 400; font-size: 14px; margin-left: 8px; }
+  header .meta { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    color: #565f89; font-size: 14px; letter-spacing: .5px; text-align: right; }
+  header .meta .scale { color: #8089a6; }
+
+  #hud { position: absolute; inset: 0; }
+  #spokes { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #spokes line { transition: stroke .3s, stroke-width .3s, opacity .3s; }
+
+  .gauge { position: absolute; transform: translate(-50%, -50%); border-radius: 50%;
+    background: conic-gradient(var(--tone, #565f89) calc(var(--pct, 0) * 1%), rgba(255,255,255,.14) 0);
+    transition: background .4s; }
+  .gauge::before { content: ""; position: absolute; border-radius: 50%; background: #0b0e14; }
+  .gauge .reading { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
+
+  .hero { left: 50%; top: 55%; width: clamp(150px, 32vh, 230px); height: clamp(150px, 32vh, 230px); }
+  .hero::before { inset: 13%; }
+  .hero .reading .value { font-weight: 600; font-size: clamp(2.6rem, 8.4vh, 4rem); color: #e6e9ef; line-height: 1; }
+  .hero .reading .cat { margin-top: .5vh; font-family: -apple-system, sans-serif; font-weight: 600;
+    font-size: 14px; letter-spacing: .08em; color: var(--tone, #565f89);
+    max-width: 78%; white-space: normal; line-height: 1.3; }
+
+  .mini { width: clamp(56px, 8.6vh, 74px); height: clamp(56px, 8.6vh, 74px); }
+  .mini::before { inset: 16%; }
+  .mini .reading .value { font-weight: 600; font-size: 14px; color: #e6e9ef; line-height: 1; }
+  .mini .label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px;
+    font-family: -apple-system, sans-serif; font-weight: 600; font-size: 14px;
+    letter-spacing: .06em; color: #8089a6; white-space: normal; text-align: center;
+    width: 100px; line-height: 1.25; }
+
+  #centered { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #565f89; font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 14px; text-align: center; }
+
+  footer { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 4vw 1.6vh;
+    display: flex; justify-content: space-between; color: #565f89;
+    font-size: 14px; letter-spacing: .5px;
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <header>
+    <div class="city"><span id="cityName">—</span><span class="sub" id="citySub"></span></div>
+    <div class="meta"><span class="scale" id="scaleMeta">US AQI</span> · <span id="updatedMeta">—</span></div>
+  </header>
+  <div id="hud">
+    <svg id="spokes"></svg>
+  </div>
+  <footer>
+    <span id="footNote">SOURCE: open-meteo.com/air-quality</span>
+    <span id="footStatus"></span>
+  </footer>
+</div>
+<script src="aqi.js"></script>
+<script type="module">
+  import { xemd, escapeHtml } from '/sdk/widget-sdk.js';
+
+  const TONE_COLOR = { ok: "#7aa2f7", warn: "#e0af68", critical: "#f7768e", unknown: "#565f89" };
+  const HERO_X = 50, HERO_Y = 55;
+  const Y_NEAR = 24, Y_MID = 54, Y_FAR = 84; // matches the original fixed 3-row fan
+  const X_NEAR = { left: 15, right: 85 }, X_FAR = { left: 8, right: 92 };
+
+  // Fans up to N selected pollutants into the same left/right, 3-row-style
+  // orbit the widget shipped with, generalized to any count: rows spread
+  // evenly top-to-bottom, and the row nearest the vertical center sits
+  // furthest out (mirroring the original 15/8/15 vs 85/92/85 pattern).
+  function orbitPositions(count, side) {
+    if (count <= 0) return [];
+    const mid = (count - 1) / 2;
+    const maxDist = mid || 1;
+    const near = X_NEAR[side], far = X_FAR[side];
+    const positions = [];
+    for (let i = 0; i < count; i++) {
+      const y = count === 1 ? Y_MID : Y_NEAR + (i * (Y_FAR - Y_NEAR)) / (count - 1);
+      const dist = Math.abs(i - mid);
+      const extremeness = 1 - dist / maxDist;
+      const x = near + (far - near) * extremeness;
+      positions.push({ x, y });
+    }
+    return positions;
+  }
+
+  // Above 10 simultaneous gauges the vertical pitch (720px logical height,
+  // shared by both grid sizes since only cols change) can't fit a legible
+  // gauge + label per row — cap and disclose rather than silently overlap.
+  const MAX_ORBIT = 10;
+
+  function selectedPollutants(cfg) {
+    return Aqi.POLLUTANTS.filter((p) => cfg["show_" + p.key] !== false);
+  }
+
+  const hud = document.getElementById("hud");
+  const spokes = document.getElementById("spokes");
+  const cityName = document.getElementById("cityName");
+  const citySub = document.getElementById("citySub");
+  const scaleMeta = document.getElementById("scaleMeta");
+  const updatedMeta = document.getElementById("updatedMeta");
+  const footStatus = document.getElementById("footStatus");
+
+  const defaults = { city: "New York", scale: "us" };
+  for (const p of Aqi.POLLUTANTS) defaults["show_" + p.key] = p.defaultOn;
+
+  let cfg = Object.assign({}, defaults);
+  let geo = null;
+  let current = null;
+  let errorMsg = null;
+  let builtSignature = null;
+  let activePollutants = [];
+  let omittedCount = 0;
+
+  // Rebuilds the hero gauge + one mini gauge/label/spoke per selected
+  // pollutant whenever the selection itself changes; refresh()/render()
+  // otherwise only update fill %, tone, and readings on existing elements.
+  function build() {
+    const selected = selectedPollutants(cfg);
+    activePollutants = selected.slice(0, MAX_ORBIT);
+    omittedCount = selected.length - activePollutants.length;
+    const signature = activePollutants.map((p) => p.key).join(",");
+    if (signature === builtSignature) return;
+    builtSignature = signature;
+
+    hud.querySelectorAll(".gauge").forEach((el) => el.remove());
+    spokes.innerHTML = "";
+
+    const hero = document.createElement("div");
+    hero.className = "gauge hero";
+    hero.id = "heroGauge";
+    hero.innerHTML = `<div class="reading"><span class="value" id="heroValue">···</span><span class="cat" id="heroCat"></span></div>`;
+    hud.appendChild(hero);
+
+    const leftCount = Math.ceil(activePollutants.length / 2);
+    const left = orbitPositions(leftCount, "left");
+    const right = orbitPositions(activePollutants.length - leftCount, "right");
+    const positions = left.concat(right);
+
+    activePollutants.forEach((p, i) => {
+      const pos = positions[i];
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("id", "spoke-" + p.key);
+      line.setAttribute("x1", HERO_X + "%"); line.setAttribute("y1", HERO_Y + "%");
+      line.setAttribute("x2", pos.x + "%"); line.setAttribute("y2", pos.y + "%");
+      line.setAttribute("stroke", TONE_COLOR.unknown);
+      line.setAttribute("stroke-width", "1.5");
+      line.setAttribute("opacity", ".3");
+      spokes.appendChild(line);
+
+      const g = document.createElement("div");
+      g.className = "gauge mini";
+      g.id = "gauge-" + p.key;
+      g.style.left = pos.x + "%"; g.style.top = pos.y + "%";
+      g.innerHTML = `<div class="reading"><span class="value">···</span></div><span class="label">${escapeHtml(p.label)}</span>`;
+      hud.appendChild(g);
+    });
+  }
+
+  function render() {
+    build();
+
+    if (errorMsg) {
+      footStatus.textContent = errorMsg.toUpperCase();
+      if (!current) {
+        hud.style.visibility = "hidden";
+        let msg = document.getElementById("centered");
+        if (!msg) {
+          msg = document.createElement("div");
+          msg.id = "centered";
+          document.getElementById("panel").appendChild(msg);
+        }
+        msg.textContent = "AIR QUALITY — " + errorMsg;
+        return;
+      }
+    } else {
+      footStatus.textContent = omittedCount > 0
+        ? "+" + omittedCount + " MORE SELECTED, NOT SHOWN — PICK " + MAX_ORBIT + " OR FEWER"
+        : "";
+      const msg = document.getElementById("centered");
+      if (msg) msg.remove();
+      hud.style.visibility = "visible";
+    }
+
+    if (!current) return;
+
+    const scaleUs = cfg.scale !== "eu";
+    scaleMeta.textContent = scaleUs ? "US AQI" : "EU AQI";
+    const heroValue = scaleUs ? current.usAqi : current.euAqi;
+    const heroInfo = scaleUs ? Aqi.usAqiInfo(heroValue) : Aqi.euAqiInfo(heroValue);
+    const heroPct = heroValue == null ? 0 : Math.min(heroValue / (scaleUs ? 300 : 100), 1) * 100;
+    const heroTone = TONE_COLOR[heroInfo.tone];
+
+    const hero = document.getElementById("heroGauge");
+    hero.style.setProperty("--pct", heroPct);
+    hero.style.setProperty("--tone", heroTone);
+    document.getElementById("heroValue").textContent = heroValue == null ? "—" : Math.round(heroValue);
+    document.getElementById("heroCat").textContent = heroInfo.label;
+
+    if (current.time) updatedMeta.textContent = "UPDATED " + current.time.replace("T", " ");
+
+    for (const p of activePollutants) {
+      const v = current[p.key];
+      const tone = Aqi.pollutantTone(p.key, v);
+      const pct = Aqi.pollutantPct(p.key, v);
+      const color = TONE_COLOR[tone];
+
+      const g = document.getElementById("gauge-" + p.key);
+      g.style.setProperty("--pct", pct);
+      g.style.setProperty("--tone", color);
+      g.querySelector(".value").textContent = v == null ? "—" : Math.round(v);
+
+      const line = document.getElementById("spoke-" + p.key);
+      line.setAttribute("stroke", color);
+      if (tone === "warn" || tone === "critical") {
+        line.setAttribute("stroke-width", "2.5");
+        line.setAttribute("opacity", ".8");
+      } else {
+        line.setAttribute("stroke-width", "1.5");
+        line.setAttribute("opacity", ".3");
+      }
+    }
+  }
+
+  async function refresh() {
+    cityName.textContent = cfg.city || "—";
+    try {
+      if (!geo || geo.queryCity !== cfg.city) {
+        const gRes = await xemd.proxy.fetch(
+          "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cfg.city) + "&count=1&language=en&format=json"
+        );
+        if (!gRes.ok) throw new Error("http " + gRes.status);
+        const g = Aqi.parseGeocode(await gRes.json());
+        if (!g) { geo = null; current = null; errorMsg = "city not found"; render(); return; }
+        g.queryCity = cfg.city;
+        geo = g;
+      }
+
+      citySub.textContent = [geo.admin1, geo.country].filter(Boolean).join(", ");
+
+      const aqUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + geo.lat +
+        "&longitude=" + geo.lon +
+        "&current=us_aqi,european_aqi," + Aqi.POLLUTANTS.map((p) => p.key).join(",");
+      const res = await xemd.proxy.fetch(aqUrl);
+      if (!res.ok) throw new Error("http " + res.status);
+      current = Aqi.parseCurrent(await res.json());
+      errorMsg = current ? null : "no data";
+    } catch (err) {
+      errorMsg = "offline";
+    }
+    render();
+  }
+
+  xemd.settings.get().then((s) => {
+    cfg = Object.assign({}, defaults, s);
+    render();
+    refresh();
+  });
+
+  xemd.onRefresh(refresh);
+  xemd.onSettingsChange((s) => {
+    const cityChanged = s.city !== cfg.city;
+    cfg = Object.assign({}, defaults, s);
+    if (cityChanged) geo = null;
+    refresh();
+  });
+
+  xemd.ready();
+</script>
+</body>
+</html>

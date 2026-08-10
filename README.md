@@ -24,6 +24,7 @@ widget folder in and rescanning is all it takes.
 | [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
 | [London Tube](com.vardek.london-tube/) | `com.vardek.london-tube` | 8×2 / 4×2 | Live London Underground/DLR/Elizabeth line arrivals and line status for a chosen station, with a walking-buffer offset and direction/line filters (TfL Unified API, keyless). |
 | [CISA Known Exploited Vulnerabilities](com.vardek.cisa-kev/) | `com.vardek.cisa-kev` | 8×2 | Wire-bulletin feed of actively-exploited CVEs from CISA's KEV catalog — due-date urgency, ransomware-flagged RUSH stamps, tap a bulletin for its NVD record (CISA, keyless). |
+| [Air Quality](com.vardek.air-quality/) | `com.vardek.air-quality` | 8×2 | Radial gauge HUD for any city's air quality — hero US/EU AQI ring with six pollutant mini-gauges orbiting it on tone-colored spokes (Open-Meteo, keyless). |
 
 Screenshots live in each widget's own folder/README — click through above.
 

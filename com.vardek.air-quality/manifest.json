@@ -1,0 +1,37 @@
+{
+  "id": "com.vardek.air-quality",
+  "name": "Air Quality",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "icon": "🌫️",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 }, { "cols": 4, "rows": 2 } ],
+  "refreshInterval": 1800,
+  "permissions": {
+    "proxy": [
+      "https://geocoding-api.open-meteo.com/**",
+      "https://air-quality-api.open-meteo.com/**"
+    ],
+    "secrets": []
+  },
+  "settingsSchema": {
+    "city":  { "type": "string", "label": "City",       "default": "New York" },
+    "scale": { "type": "enum",   "label": "AQI scale",  "default": "us", "values": ["us", "eu"] },
+    "show_pm2_5":            { "type": "boolean", "label": "Fine Particles (PM2.5)",   "default": true },
+    "show_pm10":             { "type": "boolean", "label": "Coarse Particles (PM10)",  "default": true },
+    "show_ozone":            { "type": "boolean", "label": "Ozone",                    "default": true },
+    "show_nitrogen_dioxide": { "type": "boolean", "label": "Nitrogen Dioxide",         "default": true },
+    "show_sulphur_dioxide":  { "type": "boolean", "label": "Sulfur Dioxide",           "default": true },
+    "show_carbon_monoxide":  { "type": "boolean", "label": "Carbon Monoxide",          "default": true },
+    "show_carbon_dioxide":   { "type": "boolean", "label": "Carbon Dioxide",           "default": false },
+    "show_ammonia":          { "type": "boolean", "label": "Ammonia",                  "default": false },
+    "show_methane":          { "type": "boolean", "label": "Methane",                  "default": false },
+    "show_dust":             { "type": "boolean", "label": "Dust",                     "default": false },
+    "show_alder_pollen":     { "type": "boolean", "label": "Alder Pollen *",           "default": false },
+    "show_birch_pollen":     { "type": "boolean", "label": "Birch Pollen *",           "default": false },
+    "show_grass_pollen":     { "type": "boolean", "label": "Grass Pollen *",           "default": false },
+    "show_mugwort_pollen":   { "type": "boolean", "label": "Mugwort Pollen *",         "default": false },
+    "show_olive_pollen":     { "type": "boolean", "label": "Olive Pollen *",           "default": false },
+    "show_ragweed_pollen":   { "type": "boolean", "label": "Ragweed Pollen *",         "default": false }
+  }
+}
