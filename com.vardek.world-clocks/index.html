@@ -21,12 +21,12 @@
     padding: clamp(4px, 1vw, 16px);
   }
   .clock-slot svg { width: 100%; height: auto; max-width: min(38vh, 90%);
-    filter: drop-shadow(0 2px 10px rgba(0,0,0,.7)) drop-shadow(0 0 1px rgba(255,255,255,.25)); }
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.5)); } /* one flush-mount shadow — no decorative rim halo */
   .clock-slot svg .hand { transition: transform 0.15s ease-out; }
-  .city-name { color: #eee; font-family: ui-sans-serif, system-ui, sans-serif;
+  .city-name { color: #eee; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     font-weight: 600; font-size: clamp(11px, 1.6vw, 22px); margin-top: 0.4em; }
-  .city-diff { color: #999; font-family: ui-sans-serif, system-ui, sans-serif;
-    font-size: clamp(9px, 1.1vw, 15px); }
+  .city-diff { color: #999; font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: clamp(14px, 1.3vw, 15px); } /* live value: Mono Numerals Rule; clamp floored at 14px */
 </style>
 </head>
 <body>
@@ -285,9 +285,10 @@
     if (minutesDelta === 0) return "";
     var sign = minutesDelta > 0 ? "+" : "-";
     var abs = Math.abs(minutesDelta);
-    var hours = abs / 60;
-    var hoursStr = (hours % 1 === 0) ? String(hours) : hours.toFixed(1);
-    return sign + hoursStr + "h";
+    var h = Math.floor(abs / 60), m = abs % 60;
+    // Exact minutes, not a rounded decimal — quarter-hour zones (Nepal +5:45,
+    // Kathmandu +5:45, Chatham +12:45) render precisely instead of "+5.8h".
+    return sign + h + "h" + (m ? " " + m + "m" : "");
   }
 
   function render() {
