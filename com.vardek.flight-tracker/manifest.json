@@ -1,12 +1,11 @@
 {
   "id": "com.vardek.flight-tracker",
   "name": "Flight Tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "index.html",
   "icon": "✈️",
   "subscriptions": [],
   "sizes": [ { "cols": 8, "rows": 2 } ],
-  "canvas": { "width": 2560, "height": 720 },
   "refreshInterval": 3600,
   "permissions": {
     "proxy": ["https://aerodatabox.p.rapidapi.com/**"],
@@ -14,7 +13,7 @@
   },
   "settingsSchema": {
     "flightCodes": { "type": "string", "label": "Flight codes (comma-separated, up to 4)", "default": "UA804" },
-    "accentColor": { "type": "color", "label": "Accent color", "default": "#38bdf8" },
+    "accentColor": { "type": "color", "label": "Accent color", "default": "#7aa2f7" },
     "AERODATABOX_KEY": { "type": "secret", "label": "AeroDataBox API Key (RapidAPI)" }
   }
 }

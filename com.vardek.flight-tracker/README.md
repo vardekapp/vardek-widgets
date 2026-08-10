@@ -25,7 +25,7 @@ getting a proportionally bigger card (and bigger text) the fewer there are:
 | Key               | Type   | Default   | Description                                    |
 |-------------------|--------|-----------|--------------------------------------------------|
 | `flightCodes`     | string | `UA804`   | Comma-separated flight numbers (IATA or ICAO), up to 4 |
-| `accentColor`     | color  | `#38bdf8` | Accent color for the status badge, progress bar, and plane marker |
+| `accentColor`     | color  | `#7aa2f7` | Accent color for the status badge, progress bar, and plane marker |
 | `AERODATABOX_KEY` | secret | —         | Your AeroDataBox API key (via RapidAPI)          |
 
 ## Getting a free API key
