@@ -1,7 +1,7 @@
 {
   "id": "com.vardek.space-launch",
   "name": "Space Launch Schedule",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "index.html",
   "icon": "🚀",
   "subscriptions": [],

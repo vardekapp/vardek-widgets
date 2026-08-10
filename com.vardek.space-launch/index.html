@@ -8,7 +8,7 @@
     height: 100%;
     overflow: hidden;
     background: transparent;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   }
   #board { display: block; width: 100vw; height: 100vh; }
 </style>
@@ -31,7 +31,11 @@
   window.addEventListener("resize", fit);
   const { parseLaunches, formatCountdown } = globalThis.Launches;
 
-  const ACCENTS = ["#38bdf8", "#34d399", "#a78bfa", "#f472b6", "#fbbf24", "#f87171"];
+  // Cockpit palette (DESIGN.md): one flat accent, no per-row cycling — a color
+  // that means nothing (row index) is noise, not information.
+  const ROW_ACCENT = "#7aa2f7"; // Panel Indigo
+  const SANS = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
+  const MONO = "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
 
   const defaults = { count: "5" };
   let cfg = Object.assign({}, defaults);
@@ -54,11 +58,6 @@
     ctx.closePath();
   }
 
-  function hexToRgb(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    return ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255);
-  }
-
   function drawBg() {
     ctx.clearRect(0, 0, W, H);
 
@@ -72,10 +71,10 @@
   }
 
   function drawCentered(text) {
-    ctx.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.font = "600 22px " + SANS;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#8089a6";
     ctx.fillText(text, W / 2, H / 2);
   }
 
@@ -90,35 +89,32 @@
     return lo > 0 ? text.slice(0, lo) + "…" : "…";
   }
 
+  // Urgency maps directly onto DESIGN.md's own alert colors — no invented hex.
   function countdownColors(remaining) {
-    if (remaining <= 0) return { text: "#34d399", glow: "52,211,153" };
+    if (remaining <= 0) return { text: "#30d158", rgb: "48,209,88" };      // OK Green — launched
     const hours = remaining / 3600000;
-    if (hours < 1) return { text: "#f87171", glow: "248,113,113" };
-    if (hours < 24) return { text: "#fbbf24", glow: "251,191,36" };
-    return { text: "#38bdf8", glow: "56,189,248" };
+    if (hours < 1) return { text: "#f7768e", rgb: "247,118,142" };        // Panel Red — imminent
+    if (hours < 24) return { text: "#e0af68", rgb: "224,175,104" };       // Panel Amber — soon
+    return { text: "#7aa2f7", rgb: "122,162,247" };                       // Panel Indigo — later
   }
 
   function drawHeader() {
     const padX = 24, padY = 16, headerH = 54;
 
-    // Glassmorphic header bar
-    const grad = ctx.createLinearGradient(padX, padY, padX, padY + headerH);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
-
-    ctx.fillStyle = grad;
+    // Flat, opaque cockpit panel — no gradient, no shadow.
+    ctx.fillStyle = "#161b28";
     roundRect(padX, padY, W - (padX * 2), headerH, 12);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     roundRect(padX, padY, W - (padX * 2), headerH, 12);
     ctx.stroke();
 
     // Title
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.font = "800 20px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
-    ctx.fillStyle = "#f8fafc";
+    ctx.font = "800 20px " + SANS;
+    ctx.fillStyle = "#e6e9ef";
     ctx.fillText("UPCOMING SPACE LAUNCHES", padX + 20, padY + headerH / 2);
 
     // Pulse Live Indicator
@@ -129,12 +125,12 @@
 
     ctx.beginPath();
     ctx.arc(liveX, liveY, 4, 0, 2 * Math.PI);
-    ctx.fillStyle = "#34d399";
+    ctx.fillStyle = "#30d158";
     ctx.fill();
 
     ctx.beginPath();
     ctx.arc(liveX, liveY, 4 + pulse * 4, 0, 2 * Math.PI);
-    ctx.strokeStyle = "rgba(52, 211, 153, " + (0.6 - pulse * 0.4) + ")";
+    ctx.strokeStyle = "rgba(48, 209, 88, " + (0.6 - pulse * 0.4) + ")";
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
@@ -167,7 +163,7 @@
     const rowH = (availableH - (rowGap * (rows - 1))) / rows;
 
     const nameSize = rowH >= 90 ? 24 : rowH >= 65 ? 20 : rowH >= 45 ? 16 : 14;
-    const subSize  = rowH >= 90 ? 15 : rowH >= 65 ? 13 : 11;
+    const subSize  = rowH >= 90 ? 16 : 14; // Fourteen-Pixel Floor: never below 14
     const cdSize   = rowH >= 90 ? 22 : rowH >= 65 ? 18 : 14;
 
     const badgeW = rowH >= 90 ? 190 : rowH >= 65 ? 150 : 120;
@@ -180,31 +176,19 @@
       const rowY = top + i * (rowH + rowGap);
       const rowW = W - (padX * 2);
       const midY = rowY + rowH / 2;
-      const accent = ACCENTS[i % ACCENTS.length];
 
-      // Glass row panel background
-      const cardGrad = ctx.createLinearGradient(padX, rowY, padX + rowW, rowY + rowH);
-      cardGrad.addColorStop(0, "rgba(15, 23, 42, 0.75)");
-      cardGrad.addColorStop(1, "rgba(3, 7, 18, 0.85)");
-
-      ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetY = 4;
-      ctx.fillStyle = cardGrad;
+      // Flat, opaque cockpit row — no gradient, no shadow.
+      ctx.fillStyle = "#161b28";
       roundRect(padX, rowY, rowW, rowH, 12);
       ctx.fill();
-
-      // Card stroke
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.shadowColor = "transparent";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
       ctx.lineWidth = 1;
       roundRect(padX, rowY, rowW, rowH, 12);
       ctx.stroke();
 
-      // Left Accent Ribbon
-      ctx.fillStyle = accent;
+      // Left accent ribbon — one flat cockpit color, not a per-row cycle
+      // that means nothing (row index carries no information).
+      ctx.fillStyle = ROW_ACCENT;
       roundRect(padX + 2, rowY + (rowH - (rowH * 0.6)) / 2, accentW, rowH * 0.6, 2);
       ctx.fill();
 
@@ -216,40 +200,39 @@
       // Rocket Title
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = `700 ${nameSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.fillStyle = "#e6e9ef";
+      ctx.font = `700 ${nameSize}px ${SANS}`;
 
       const titleY = subSize > 0 ? midY - (rowH * 0.12) : midY;
       ctx.fillText("🚀 " + truncate(l.name, textMaxW - 30), textX, titleY);
 
       // Subtitle (Provider / Pad)
       if (rowH >= 45) {
-        ctx.fillStyle = "#94a3b8";
-        ctx.font = `500 ${subSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.fillStyle = "#8089a6";
+        ctx.font = `500 ${subSize}px ${SANS}`;
         const sub = [l.provider, l.pad].filter(Boolean).join("  ·  ");
         ctx.fillText(truncate(sub, textMaxW), textX, midY + (rowH * 0.18));
       }
 
-      // Countdown Badge Box
+      // Countdown Badge Box — flat, opaque.
       const remaining = l.netMs - Date.now();
       const cd = formatCountdown(remaining);
       const cdTheme = countdownColors(remaining);
       const badgeY = midY - badgeH / 2;
 
-      ctx.fillStyle = "rgba(8, 12, 20, 0.8)";
+      ctx.fillStyle = "#0b0e14";
       roundRect(cdBadgeX, badgeY, badgeW, badgeH, badgeH / 2);
       ctx.fill();
 
-      const rgb = hexToRgb(cdTheme.text);
-      ctx.strokeStyle = "rgba(" + rgb + ", 0.35)";
+      ctx.strokeStyle = "rgba(" + cdTheme.rgb + ", 0.4)";
       ctx.lineWidth = 1;
       roundRect(cdBadgeX, badgeY, badgeW, badgeH, badgeH / 2);
       ctx.stroke();
 
-      // Countdown text inside badge
+      // Countdown text — the Mono Numerals Rule: it ticks every second, so it's SF Mono.
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `800 ${cdSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.font = `600 ${cdSize}px ${MONO}`;
       ctx.fillStyle = cdTheme.text;
       ctx.fillText(cd, cdBadgeX + badgeW / 2, midY);
     }
@@ -257,9 +240,9 @@
     if (errorMsg) {
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = "#f87171";
-      ctx.font = "500 12px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillText(errorMsg, padX, H - 6);
+      ctx.fillStyle = "#f7768e";
+      ctx.font = "500 14px " + SANS;
+      ctx.fillText(errorMsg, padX, H - 8);
     }
   }
 
