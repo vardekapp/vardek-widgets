@@ -46,10 +46,10 @@ find the widget, and place it.
 
 **Option B — manual:**
 
-1. In Vardek Admin, click **Reveal** on the widget library — this opens
+1. In Vardek Admin Widgets panel, click **Open Folder** — this opens
    `~/Library/Application Support/Vardek/widgets/` in Finder.
 2. Copy the widget folder (e.g. `com.vardek.day-night/`) into it.
-3. Click **Rescan** in Admin. The widget appears in the library — place it.
+3. Click **Rescan**. The widget appears in the library — place it.
 
 Either way: **no app reinstall, no restart.**
 
