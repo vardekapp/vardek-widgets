@@ -8,7 +8,7 @@
     height: 100%;
     overflow: hidden;
     background: #030712;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   }
   #map { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
 </style>
@@ -23,7 +23,7 @@
   const W = 2560, H = 720;
   const canvas = document.getElementById("map");
   const ctx = canvas.getContext("2d");
-  const { parseQuakes, magRadius, project, magColor } = globalThis.Quakes;
+  const { parseQuakes, magRadius, project, magColor, MAG_BANDS } = globalThis.Quakes;
 
   const defaults = { minMagnitude: "2.5", window: "24h", showLand: true };
   let cfg = defaults;
@@ -31,13 +31,9 @@
   let errorMsg = null;
   let selected = null;
 
-  const LEGEND_BANDS = [
-    { label: "< M3", color: "#30d158" },
-    { label: "M3–4", color: "#ffd60a" },
-    { label: "M4–5", color: "#ff9f0a" },
-    { label: "M5–6", color: "#ff453a" },
-    { label: "M6+",  color: "#ff375f" },
-  ];
+  const SANS = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+  const MONO = "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace";
+  const MAP_LINE = "#7aa2f7"; // Panel Indigo — graticule/coastline, not canopy cyan
 
   function hexToRgb(hex) {
     const n = parseInt(hex.slice(1), 16);
@@ -67,8 +63,8 @@
   function drawLand() {
     if (!cfg.showLand || !Array.isArray(globalThis.LAND)) return;
 
-    ctx.fillStyle = "rgba(22, 33, 62, 0.55)";
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+    ctx.fillStyle = "#161b28";
+    ctx.strokeStyle = "rgba(122, 162, 247, 0.25)";
     ctx.lineWidth = 1;
 
     for (const ring of globalThis.LAND) {
@@ -84,7 +80,7 @@
   }
 
   function drawGraticule() {
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
+    ctx.strokeStyle = "rgba(122, 162, 247, 0.05)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 12]);
 
@@ -99,7 +95,7 @@
     ctx.setLineDash([]);
 
     // Prime meridian & Equator subtle highlight
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.strokeStyle = "rgba(122, 162, 247, 0.12)";
     ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
   }
@@ -154,7 +150,7 @@
         const alpha = (1 - phase) * 0.6;
         ctx.beginPath();
         ctx.arc(p.x, p.y, ringR, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(56, 189, 248, " + alpha + ")";
+        ctx.strokeStyle = "rgba(122, 162, 247, " + alpha + ")";
         ctx.lineWidth = Math.max(0.8, 2.5 - phase * 2);
         ctx.stroke();
       }
@@ -171,16 +167,12 @@
   function drawTitle() {
     const boxX = 24, boxY = 24, boxW = 420, boxH = 76;
 
-    // Glass panel container
-    const grad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
-
-    ctx.fillStyle = grad;
+    // Flat, opaque cockpit panel — no gradient, no shadow.
+    ctx.fillStyle = "#161b28";
     roundRect(boxX, boxY, boxW, boxH, 14);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     roundRect(boxX, boxY, boxW, boxH, 14);
     ctx.stroke();
 
@@ -188,15 +180,15 @@
     ctx.textBaseline = "top";
 
     if (errorMsg && quakes.length === 0) {
-      ctx.font = "700 20px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#94a3b8";
+      ctx.font = "700 20px " + SANS;
+      ctx.fillStyle = "#8089a6";
       ctx.fillText("SEISMIC MONITOR — " + errorMsg, boxX + 18, boxY + 26);
       return;
     }
 
     // Title Header
-    ctx.font = "800 22px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
-    ctx.fillStyle = "#f8fafc";
+    ctx.font = "800 22px " + SANS;
+    ctx.fillStyle = "#e6e9ef";
     ctx.fillText("EARTHQUAKE MONITOR", boxX + 18, boxY + 16);
 
     // Live Indicator Dot
@@ -205,44 +197,40 @@
     ctx.fillStyle = "#30d158";
     ctx.fill();
 
-    // Subtitle Stats
-    ctx.font = "600 13px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillStyle = "#94a3b8";
+    // Subtitle Stats — event count is a live value: SF Mono per the Mono Numerals Rule.
+    ctx.font = "600 14px " + MONO;
+    ctx.fillStyle = "#8089a6";
     const sub = `${quakes.length} EVENTS  ·  MIN M${cfg.minMagnitude}  ·  LAST ${cfg.window.toUpperCase()}`;
     ctx.fillText(sub, boxX + 18, boxY + 46);
 
     if (errorMsg) {
-      ctx.fillStyle = "#ff453a";
+      ctx.fillStyle = "#f7768e";
       ctx.fillText(" • " + errorMsg, boxX + 18 + ctx.measureText(sub).width, boxY + 46);
     }
   }
 
   function drawMagLegend() {
     const pad = 14, rowH = 22;
-    const boxW = 126, boxH = pad * 2 + LEGEND_BANDS.length * rowH - 6;
+    const boxW = 126, boxH = pad * 2 + MAG_BANDS.length * rowH - 6;
     const x0 = W - boxW - 24, y0 = H - boxH - 24;
 
-    const grad = ctx.createLinearGradient(x0, y0, x0, y0 + boxH);
-    grad.addColorStop(0, "rgba(15, 23, 42, 0.85)");
-    grad.addColorStop(1, "rgba(3, 7, 18, 0.90)");
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#161b28";
     roundRect(x0, y0, boxW, boxH, 12);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     roundRect(x0, y0, boxW, boxH, 12);
     ctx.stroke();
 
-    ctx.font = "600 13px -apple-system, BlinkMacSystemFont, sans-serif";
-    LEGEND_BANDS.forEach((b, i) => {
+    ctx.font = "600 14px " + SANS;
+    MAG_BANDS.forEach((b, i) => {
       const y = y0 + pad + i * rowH;
       ctx.beginPath();
       ctx.arc(x0 + pad + 6, y + 6, 5, 0, 2 * Math.PI);
       ctx.fillStyle = b.color;
       ctx.fill();
 
-      ctx.fillStyle = "#cbd5e1";
+      ctx.fillStyle = "#c0caf5";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(b.label, x0 + pad + 20, y + 6);
@@ -266,16 +254,17 @@
     const latDir = q.lat >= 0 ? "N" : "S";
     const lonDir = q.lon >= 0 ? "E" : "W";
 
+    // Place/name is prose (sans); magnitude+depth and time+coordinates are all
+    // live readouts, so both get the Mono Numerals treatment.
     const lines = [
-      { text: q.place || "Unknown Location", font: "700 16px", color: "#f8fafc" },
-      { text: "M" + q.mag.toFixed(1) + (typeof q.depth === "number" ? "  ·  Depth " + q.depth.toFixed(1) + " km" : ""), font: "600 14px", color: bandColor },
-      { text: relativeTime(q.timeMs) + "  ·  " + Math.abs(q.lat).toFixed(2) + "°" + latDir + ", " + Math.abs(q.lon).toFixed(2) + "°" + lonDir, font: "500 13px", color: "#94a3b8" },
+      { text: q.place || "Unknown Location", font: "700 16px " + SANS, color: "#e6e9ef" },
+      { text: "M" + q.mag.toFixed(1) + (typeof q.depth === "number" ? "  ·  Depth " + q.depth.toFixed(1) + " km" : ""), font: "600 14px " + MONO, color: bandColor },
+      { text: relativeTime(q.timeMs) + "  ·  " + Math.abs(q.lat).toFixed(2) + "°" + latDir + ", " + Math.abs(q.lon).toFixed(2) + "°" + lonDir, font: "500 14px " + MONO, color: "#8089a6" },
     ];
 
-    ctx.font = "700 16px -apple-system, BlinkMacSystemFont, sans-serif";
     let maxW = 0;
     for (const l of lines) {
-      ctx.font = l.font + " -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = l.font;
       maxW = Math.max(maxW, ctx.measureText(l.text).width);
     }
 
@@ -284,16 +273,13 @@
     x = Math.max(12, Math.min(W - pw - 12, x));
     y = Math.max(12, Math.min(H - ph - 12, y));
 
-    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 18;
+    // Flat, opaque cockpit panel — no shadow; the accent border alone signals selection.
+    ctx.fillStyle = "#161b28";
     roundRect(x, y, pw, ph, 12);
     ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = "transparent";
 
     const rgb = hexToRgb(bandColor);
-    ctx.strokeStyle = "rgba(" + rgb + ",0.5)";
+    ctx.strokeStyle = "rgba(" + rgb + ",0.6)";
     ctx.lineWidth = 1.5;
     roundRect(x, y, pw, ph, 12);
     ctx.stroke();
@@ -301,7 +287,7 @@
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     lines.forEach((l, i) => {
-      ctx.font = l.font + " -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.font = l.font;
       ctx.fillStyle = l.color;
       ctx.fillText(l.text, x + 18, y + 14 + i * 24);
     });
@@ -349,6 +335,11 @@
       if (res.ok) {
         quakes = parseQuakes(await res.json());
         errorMsg = null;
+        // A refreshed feed replaces every quake object; re-find the selection
+        // by id or drop it, so the info panel never points at stale data.
+        if (selected) {
+          selected = selected.id ? quakes.find(q => q.id === selected.id) || null : null;
+        }
       } else {
         errorMsg = `HTTP ${res.status}`;
       }

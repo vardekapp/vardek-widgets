@@ -13,6 +13,7 @@
       if (typeof lon !== "number" || typeof lat !== "number") continue;
       if (typeof mag !== "number" || !Number.isFinite(mag)) continue;
       out.push({
+        id: (f && typeof f.id === "string") ? f.id : null,
         lat,
         lon,
         mag,
@@ -33,13 +34,19 @@
   }
 
   // Distinct magnitude bands (not a smooth blend) so overlapping dots stay legible.
+  // Single source of truth for both the dot color and the on-screen legend.
+  const MAG_BANDS = [
+    { max: 3, label: "< M3", color: "#3ad16b" },
+    { max: 4, label: "M3–4", color: "#ffd60a" },
+    { max: 5, label: "M4–5", color: "#ff9f0a" },
+    { max: 6, label: "M5–6", color: "#ff453a" },
+    { max: Infinity, label: "M6+", color: "#ff2d95" },
+  ];
+
   function magColor(mag) {
-    if (mag < 3) return "#3ad16b";
-    if (mag < 4) return "#ffd60a";
-    if (mag < 5) return "#ff9f0a";
-    if (mag < 6) return "#ff453a";
-    return "#ff2d95";
+    for (const band of MAG_BANDS) if (mag < band.max) return band.color;
+    return MAG_BANDS[MAG_BANDS.length - 1].color;
   }
 
-  globalThis.Quakes = { parseQuakes, magRadius, project, magColor };
+  globalThis.Quakes = { parseQuakes, magRadius, project, magColor, MAG_BANDS };
 })();
