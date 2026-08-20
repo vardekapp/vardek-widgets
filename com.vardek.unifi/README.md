@@ -2,6 +2,8 @@
 
 Three-panel network dashboard — site info and WAN uptime on the left, client and device counts in the centre, and a full device infrastructure table on the right.
 
+![UniFi Network widget](unifi.png)
+
 ---
 
 ## Panels

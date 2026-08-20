@@ -2,6 +2,8 @@
 
 A Formula 1 dashboard widget: next race, weekend schedule, season calendar, and both championship standings on one glanceable surface — no tabs, everything visible at once.
 
+![F1 Schedule widget](f1.png)
+
 ## What It Shows
 
 - **Next-race hero:** Countdown to the next race (days / hours / mins), a flat circuit-outline watermark, round/season and sprint-weekend badge, and a live/finished state during and after the race (the live state shows real elapsed time, not an estimated lap count).
