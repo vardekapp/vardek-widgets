@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UniFi Network</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Cockpit tokens (DESIGN.md): Tokyo Night surfaces, Panel Indigo accent,
+       SF Mono for every live value. Base matches the runtime cell (#11151f)
+       so the widget meets its rounded cell without a seam. */
+    :root {
+      --bg: #11151f;
+      --surface: #161b28;
+      --border: #2a3350;
+      --text: #e6e9ef;
+      --text-mid: #8089a6;
+      --text-dim: #565f89;
+      --accent: #7aa2f7;
+      --accent-2: #bb9af7;
+      --green: #9ece6a;
+      --green-dim: rgba(158, 206, 106, 0.10);
+      --yellow: #e0af68;
+      --yellow-dim: rgba(224, 175, 104, 0.10);
+      --red: #f7768e;
+      --red-dim: rgba(247, 118, 142, 0.10);
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Overlay states ─────────────────────────────────────────── */
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      z-index: 10;
+    }
+
+    #overlay.hidden { display: none; }
+
+    .overlay-card {
+      text-align: center;
+      padding: 44px 56px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      max-width: 640px;
+    }
+
+    .overlay-icon {
+      margin-bottom: 20px;
+      color: var(--accent);
+    }
+    .overlay-icon svg { width: 44px; height: 44px; }
+
+    .overlay-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .overlay-body {
+      font-size: 1rem;
+      color: var(--text-mid);
+      line-height: 1.6;
+    }
+
+    .overlay-card.error { border-color: var(--red); }
+    .overlay-card.error .overlay-title { color: var(--red); }
+    .overlay-card.error .overlay-icon { color: var(--red); }
+
+    #retry-btn {
+      margin-top: 22px;
+      min-height: 48px;
+      padding: 10px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #retry-btn:active { border-color: var(--accent); color: var(--accent); }
+
+    /* Spinner */
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main layout: site/WAN hero · counts · exceptions ─────────── */
+
+    #app {
+      display: grid;
+      grid-template-columns: minmax(340px, 30%) minmax(300px, 24%) 1fr;
+      gap: 20px;
+      padding: 24px;
+      height: 100vh;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel-label {
+      font-size: 0.875rem;              /* 14px floor: readable from the chair */
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    /* ── Left: site + WAN hero ────────────────────────────────────── */
+
+    .site-name {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .site-isp {
+      font-size: 1rem;
+      color: var(--text-mid);
+      margin-bottom: auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .wan-section {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .wan-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+      margin-bottom: 8px;
+    }
+
+    .wan-value {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 4rem;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--text-mid);            /* neutral until a real number lands */
+    }
+
+    .wan-value span { font-size: 2rem; }
+
+    .wan-value.healthy { color: var(--green); }
+    .wan-value.warning { color: var(--yellow); }
+    .wan-value.critical { color: var(--red); }
+
+    .updated-line {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      margin-top: 10px;
+    }
+    .updated-line.stale { color: var(--yellow); }
+
+    /* ── Center: counts ───────────────────────────────────────────── */
+
+    #panel-stats { gap: 14px; padding: 0; background: none; border: none; }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 22px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .stat-card .stat-header { margin-bottom: 0; }
+
+    .stat-header {
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 2.6rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .device-counts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .count-pill {
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .count-pill.online { background: var(--green-dim); }
+    .count-pill.offline { background: var(--red-dim); }
+
+    .count-pill-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .count-pill.online .count-pill-label,
+    .count-pill.online .count-pill-value { color: var(--green); }
+    .count-pill.offline .count-pill-label,
+    .count-pill.offline .count-pill-value { color: var(--red); }
+
+    .count-pill-value {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.6rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    /* ── Right: status — summary line + per-device rows ───────────── */
+
+    .status-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .status-summary {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-summary .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .status-summary.ok { color: var(--green); }
+    .status-summary.warn { color: var(--yellow); }
+    .status-summary.bad { color: var(--red); }
+
+    .device-count {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    #device-list {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+    }
+
+    #device-list::-webkit-scrollbar { width: 4px; }
+    #device-list::-webkit-scrollbar-track { background: transparent; }
+    #device-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .device-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1.6fr) minmax(80px, 1fr) minmax(105px, 1.1fr) auto minmax(60px, 0.8fr);
+      gap: 10px;
+      align-items: center;
+      padding: 11px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .device-row:last-child { border-bottom: none; }
+
+    .col-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      overflow: hidden;
+    }
+
+    .col-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .gw-badge {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+
+    .col-model {
+      font-size: 1rem;
+      color: var(--text-mid);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .col-ip {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+      color: var(--text-mid);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .status-pill.online { background: var(--green-dim); color: var(--green); }
+    .status-pill.offline { background: var(--red-dim); color: var(--red); }
+
+    .status-pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .col-fw {
+      text-align: right;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+      color: var(--text-mid);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .col-fw .update-tag {
+      color: var(--yellow);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Overlay (no key / loading / error) -->
+  <div id="overlay">
+    <div id="overlay-card" class="overlay-card">
+      <div id="overlay-icon" class="overlay-icon"></div>
+      <div id="overlay-title" class="overlay-title"></div>
+      <div id="overlay-body" class="overlay-body"></div>
+      <button id="retry-btn" hidden>Try again</button>
+    </div>
+  </div>
+
+  <!-- Main UI (hidden until data loads) -->
+  <div id="app" style="display:none;">
+
+    <!-- Left: site + WAN hero -->
+    <div id="panel-site" class="panel">
+      <div class="panel-label">UniFi Network</div>
+      <div id="site-name" class="site-name">—</div>
+      <div class="site-isp"><span id="site-isp-name">—</span></div>
+      <div class="wan-section">
+        <div class="wan-label">WAN Uptime</div>
+        <div id="wan-value" class="wan-value">—</div>
+        <div id="updated-line" class="updated-line"></div>
+      </div>
+    </div>
+
+    <!-- Center: counts -->
+    <div id="panel-stats" class="panel">
+      <div class="stat-card">
+        <div class="stat-header">Devices</div>
+        <div id="stat-devices-total" class="stat-value">—</div>
+        <div class="device-counts">
+          <div class="count-pill online">
+            <span class="count-pill-label">Online</span>
+            <span id="stat-devices-online" class="count-pill-value">—</span>
+          </div>
+          <div class="count-pill offline">
+            <span class="count-pill-label">Offline</span>
+            <span id="stat-devices-offline" class="count-pill-value">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">WiFi Clients</div>
+        <div id="stat-wifi" class="stat-value">—</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">Wired Clients</div>
+        <div id="stat-wired" class="stat-value">—</div>
+      </div>
+    </div>
+
+    <!-- Right: status — glance summary on top, full device detail below -->
+    <div id="panel-status" class="panel">
+      <div class="panel-label">Status</div>
+      <div class="status-head">
+        <div id="status-summary" class="status-summary"></div>
+        <div id="device-count" class="device-count"></div>
+      </div>
+      <div id="device-list"></div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { xemd, escapeHtml } from '/sdk/widget-sdk.js';
+
+    const SITES_URL  = 'https://api.ui.com/ea/sites';
+    const DEVICES_URL = 'https://api.ui.com/ea/devices';
+    const API_HEADER  = { 'X-API-Key': '{{secret:UNIFI_KEY}}' };
+
+    const KEY_ICON =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>';
+    const ALERT_ICON =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
+    // ── Overlay helpers ──────────────────────────────────────────────
+
+    function showOverlay(type, iconSvg, title, body, canRetry) {
+      const overlay = document.getElementById('overlay');
+      const card    = document.getElementById('overlay-card');
+      overlay.classList.remove('hidden');
+      card.className = 'overlay-card' + (type ? ` ${type}` : '');
+      document.getElementById('overlay-icon').innerHTML     = iconSvg;
+      document.getElementById('overlay-title').textContent  = title;
+      document.getElementById('overlay-body').textContent   = body;
+      document.getElementById('retry-btn').hidden = !canRetry;
+    }
+
+    function showLoading() {
+      showOverlay('', '<div class="spinner"></div>', 'Connecting to UniFi…', '', false);
+    }
+
+    function showKeyPrompt() {
+      showOverlay('', KEY_ICON, 'UniFi API Key Required',
+        'Open Settings → Widgets → UniFi Network and enter your UniFi API key.', false);
+    }
+
+    function showLoadError(err) {
+      // Raw error goes to the console; the panel gets plain language.
+      console.error('[unifi] load failed:', err);
+      showOverlay('error', ALERT_ICON, "Can't reach the UniFi cloud",
+        'Check your API key in Settings → Widgets → UniFi Network, or tap Try again. ' +
+        'Vardek retries automatically every 5 minutes.', true);
+    }
+
+    function hideOverlay() {
+      document.getElementById('overlay').classList.add('hidden');
+      document.getElementById('app').style.display = 'grid';
+    }
+
+    // ── Data fetching ─────────────────────────────────────────────────
+
+    async function fetchJson(url) {
+      const res = await xemd.proxy.fetch(url, { headers: API_HEADER });
+      if (!res.ok) {
+        const status = res.status != null ? `HTTP ${res.status}` : 'unknown error';
+        throw new Error(status);
+      }
+      return res.json();
+    }
+
+    // ── Rendering ──────────────────────────────────────────────────────
+
+    function wanClass(pct) {
+      if (pct >= 99) return 'healthy';
+      if (pct >= 95) return 'warning';
+      return 'critical';
+    }
+
+    let lastUpdated = null;   // Date of last successful load
+    let missedRefreshes = 0;  // consecutive silent refresh failures
+
+    function renderUpdatedLine() {
+      const el = document.getElementById('updated-line');
+      if (!lastUpdated) { el.textContent = ''; return; }
+      const hh = String(lastUpdated.getHours()).padStart(2, '0');
+      const mm = String(lastUpdated.getMinutes()).padStart(2, '0');
+      const stale = missedRefreshes >= 2;
+      el.textContent = `Updated ${hh}:${mm}` + (stale ? ' · retrying' : '');
+      el.classList.toggle('stale', stale);
+    }
+
+    function renderSite(site, deviceList) {
+      const counts = site?.statistics?.counts || {};
+      const pct    = site?.statistics?.percentages?.wanUptime;
+      // One source of truth for the totals shown side by side.
+      const total   = counts.totalDevice ?? deviceList.length;
+      const offline = counts.offlineDevice ?? deviceList.filter((d) => d.status !== 'online').length;
+      const online  = total - offline;
+
+      document.getElementById('site-name').textContent     = site?.meta?.desc || 'UniFi Site';
+      document.getElementById('site-isp-name').textContent = site?.statistics?.ispInfo?.name || '—';
+
+      const wanEl = document.getElementById('wan-value');
+      if (pct == null) {
+        // Absent stat is unknown, not an outage: neutral dash, no alarm color.
+        wanEl.className = 'wan-value';
+        wanEl.textContent = '—';
+      } else {
+        wanEl.className = `wan-value ${wanClass(pct)}`;
+        wanEl.innerHTML = `${pct.toFixed(1)}<span>%</span>`;
+      }
+
+      document.getElementById('stat-devices-total').textContent   = total;
+      document.getElementById('stat-devices-online').textContent  = online;
+      document.getElementById('stat-devices-offline').textContent = offline;
+      document.getElementById('stat-wifi').textContent  = counts.wifiClient  || 0;
+      document.getElementById('stat-wired').textContent = counts.wiredClient || 0;
+    }
+
+    // Status: one glanceable summary line, then the full device inventory —
+    // name, model, IP, online/offline pill, firmware — offline devices first.
+    function renderStatus(devices) {
+      const offline = devices.filter((d) => d.status !== 'online');
+      const updates = devices.filter((d) => d.firmwareStatus === 'update_available');
+
+      const summary = document.getElementById('status-summary');
+      if (!devices.length) {
+        summary.className = 'status-summary warn';
+        summary.innerHTML = '<span class="dot"></span>No devices reported';
+      } else if (offline.length) {
+        summary.className = 'status-summary bad';
+        summary.innerHTML = `<span class="dot"></span>${offline.length} offline`;
+      } else if (updates.length) {
+        summary.className = 'status-summary warn';
+        summary.innerHTML = `<span class="dot"></span>${updates.length} update${updates.length !== 1 ? 's' : ''} pending`;
+      } else {
+        summary.className = 'status-summary ok';
+        summary.innerHTML = '<span class="dot"></span>All online · firmware current';
+      }
+
+      document.getElementById('device-count').textContent =
+        devices.length ? `${devices.length} device${devices.length !== 1 ? 's' : ''}` : '';
+
+      const list = document.getElementById('device-list');
+      list.innerHTML = '';
+      // Offline first: the rows that matter surface above the fold.
+      const sorted = [...devices].sort((a, b) =>
+        (a.status === 'online') - (b.status === 'online'));
+      for (const d of sorted) {
+        const isOnline = d.status === 'online';
+        const row = document.createElement('div');
+        row.className = 'device-row';
+        // Device fields are controller-editable remote data — escape before
+        // innerHTML. This frame holds the {{secret:UNIFI_KEY}} proxy capability.
+        row.innerHTML = `
+          <div class="col-name">
+            <span>${escapeHtml(d.name || d.shortname || 'Unknown')}</span>
+            ${d.isConsole ? '<span class="gw-badge">GW</span>' : ''}
+          </div>
+          <div class="col-model">${escapeHtml(d.model || '—')}</div>
+          <div class="col-ip">${escapeHtml(d.ip || '—')}</div>
+          <span class="status-pill ${isOnline ? 'online' : 'offline'}">
+            <span class="dot"></span>${isOnline ? 'Online' : 'Offline'}
+          </span>
+          <div class="col-fw">
+            ${escapeHtml(d.version || '—')}${d.firmwareStatus === 'update_available'
+              ? ' <span class="update-tag">▲</span>' : ''}
+          </div>`;
+        list.appendChild(row);
+      }
+    }
+
+    // ── Main ────────────────────────────────────────────────────────────
+
+    async function load() {
+      const [sitesRes, devicesRes] = await Promise.all([
+        fetchJson(SITES_URL),
+        fetchJson(DEVICES_URL),
+      ]);
+
+      const site    = sitesRes?.data?.[0];
+      const devices = devicesRes?.data?.[0]?.devices || [];
+
+      renderSite(site, devices);
+      renderStatus(devices);
+      lastUpdated = new Date();
+      missedRefreshes = 0;
+      renderUpdatedLine();
+    }
+
+    async function loadAndShow() {
+      showLoading();
+      try {
+        await load();
+        hideOverlay();
+      } catch (err) {
+        showLoadError(err);
+      }
+    }
+
+    document.getElementById('retry-btn').addEventListener('click', loadAndShow);
+
+    async function init() {
+      const apiKey = await xemd.secrets.get('UNIFI_KEY');
+      if (!apiKey) {
+        showKeyPrompt();
+        xemd.ready();
+        return;
+      }
+      await loadAndShow();
+      xemd.ready();
+    }
+
+    xemd.onRefresh(async () => {
+      const apiKey = await xemd.secrets.get('UNIFI_KEY');
+      if (!apiKey) return;
+      try {
+        await load();
+        hideOverlay();
+      } catch (err) {
+        // Keep existing data visible on transient errors, but say it's stale.
+        console.error('[unifi] refresh failed:', err);
+        missedRefreshes++;
+        renderUpdatedLine();
+      }
+    });
+
+    xemd.onSettingsChange(async () => {
+      const apiKey = await xemd.secrets.get('UNIFI_KEY');
+      if (!apiKey) { showKeyPrompt(); return; }
+      await loadAndShow();
+    });
+
+    init();
+  </script>
+</body>
+</html>

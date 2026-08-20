@@ -1,0 +1,18 @@
+{
+  "id": "com.vardek.unifi",
+  "name": "UniFi Network",
+  "version": "1.1.1",
+  "entry": "index.html",
+  "icon": "📡",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "refreshInterval": 300,
+  "permissions": {
+    "proxy": ["https://api.ui.com/ea/**"],
+    "secrets": ["UNIFI_KEY"]
+  },
+  "settingsSchema": {
+    "UNIFI_KEY": { "type": "secret", "label": "UniFi API Key" }
+  }
+}

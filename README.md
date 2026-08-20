@@ -17,6 +17,7 @@ widget folder in and rescanning is all it takes.
 | [CISA Known Exploited Vulnerabilities](com.vardek.cisa-kev/) | `com.vardek.cisa-kev` | 8×2 | Wire-bulletin feed of actively-exploited CVEs from CISA's KEV catalog — due-date urgency, ransomware-flagged RUSH stamps, tap a bulletin for its NVD record (CISA, keyless). |
 | [Day/Night Map](com.vardek.day-night/) | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
 | [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
+| [F1 Schedule](com.vardek.f1-schedule/) | `com.vardek.f1-schedule` | 8×2 | Formula 1 next race, standings, and calendar (Jolpica / OpenF1 / MotorsportCalendars, keyless). |
 | [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
 | [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
 | [LCD Watch](com.vardek.lcd-watch/) | `com.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
@@ -26,6 +27,7 @@ widget folder in and rescanning is all it takes.
 | [On This Day](com.vardek.otd/) | `com.vardek.otd` | 8×2 | Gallery wall of Wikipedia's "on this day" history — 16-card paged grid of events, births, deaths, and holidays, category-toggled, tap any card to open its article (Wikipedia REST API, keyless). |
 | [Picture of the Day](com.vardek.potd/) | `com.vardek.potd` | 8×2 | Darkroom contact-sheet frame for Wikipedia's daily featured photo — headline, photographer credit, license, and caption in a proof-sheet column, tap to open full resolution on Commons (Wikipedia REST API, keyless). |
 | [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
+| [UniFi Network](com.vardek.unifi/) | `com.vardek.unifi` | 8×2 | Ubiquiti UniFi network stats from the UniFi Site Manager API (`api.ui.com`). Requires your own `UNIFI_KEY`. |
 | [World Clocks](com.vardek.world-clocks/) | `com.vardek.world-clocks` | 8×2 / 4×2 | Newsroom-style wall of 2-4 analog clocks (white face, black hands, red sweep) with city labels and time-difference offsets. Local clock, no network. |
 
 Screenshots live in each widget's own folder/README — click through above.

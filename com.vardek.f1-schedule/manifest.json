@@ -1,0 +1,22 @@
+{
+  "id": "com.vardek.f1-schedule",
+  "name": "F1 Schedule",
+  "version": "2.0.0",
+  "entry": "index.html",
+  "icon": "🏎️",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "refreshInterval": 3600,
+  "permissions": {
+    "proxy": [
+      "https://api.jolpi.ca/**",
+      "https://api.openf1.org/**",
+      "https://files-f1.motorsportcalendars.com/**"
+    ],
+    "secrets": []
+  },
+  "settingsSchema": {
+    "racesToShow": { "type": "number", "label": "Upcoming races to show (Calendar tab)", "default": 5 }
+  }
+}

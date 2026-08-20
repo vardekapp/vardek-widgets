@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    /* Cockpit instrument (DESIGN.md hybrid): Tokyo Night base — #0b0e14,
+       system sans + SF Mono values, flat, 14px floor — with F1 race red
+       #ff1801 as this widget's single subject-matter accent (documented
+       content-brand exception). Team colors are data, not decoration.
+       One surface, no tabs: hero + session timeline on top, calendar and
+       both standings below. Everything visible at a glance. */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0e14;
+      --border: #2a3350;
+      --hairline: rgba(42, 51, 80, 0.55);
+      --text: #e6e9ef;
+      --text-mid: #8089a6;
+      --text-dim: #565f89;
+      --red: #ff1801;
+      --red-dim: rgba(255, 24, 1, 0.12);
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    @keyframes f1Blink { 0%,100% { opacity:1 } 50% { opacity:0.45 } }
+
+    /* State overlay */
+    #state-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2rem;
+      background: var(--bg);
+      z-index: 100;
+    }
+    #state-overlay.hidden { display: none; }
+
+    .state-logo {
+      font-size: 2.6rem;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--red);
+      letter-spacing: -0.04em;
+    }
+    .state-text {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
+
+    .zone-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    /* ── Top band: next-race hero + weekend session timeline ─────────── */
+
+    #top-band {
+      flex: 0 0 300px;
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      min-height: 0;
+    }
+
+    #hero {
+      width: 900px;
+      flex-shrink: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      padding: 24px 40px;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    /* Circuit outline: flat dim watermark, right-aligned — no glow, no pulse */
+    #track-svg-wrap {
+      position: absolute;
+      top: 16px;
+      bottom: 16px;
+      right: 24px;
+      width: 300px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    #track-svg-wrap svg { width: 100%; height: 100%; }
+
+    #hero > *:not(#track-svg-wrap) { position: relative; z-index: 1; }
+
+    .race-title {
+      font-size: 2rem;
+      font-weight: 700;
+      font-style: italic;
+      text-transform: uppercase;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+
+    .race-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
+
+    .loc-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+
+    .race-date-row {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.875rem;
+      color: var(--text-mid);
+    }
+
+    .race-round-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .sprint-badge {
+      background: var(--red-dim);
+      border: 1px solid rgba(255, 24, 1, 0.35);
+      color: var(--red);
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 2px 10px;
+      border-radius: 10px;
+    }
+
+    /* Countdown — the signature moment, panel-hero mono */
+    #countdown-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .cd-block { display: flex; flex-direction: column; min-width: 96px; }
+
+    .cd-num {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 4rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .cd-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-top: 4px;
+    }
+
+    .cd-sep {
+      font-family: var(--mono);
+      font-size: 2.6rem;
+      color: var(--text-dim);
+      line-height: 1.3;
+    }
+
+    /* Live: real facts only — badge + elapsed time, no invented lap count */
+    #live-wrap { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+
+    .live-badge {
+      background: var(--red);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 10px;
+      animation: f1Blink 1.2s ease-in-out infinite;
+    }
+
+    .live-elapsed {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.6rem;
+      color: var(--text-mid);
+    }
+
+    #finished-wrap { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+    .finished-flag { font-size: 2rem; }
+    .finished-label {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
+
+    .hero-footer {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+    .hero-footer .stale { color: #e0af68; }
+
+    /* Session timeline — the old Schedule tab as a left→right race weekend */
+    #sessions-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 32px;
+      min-width: 0;
+    }
+
+    #sessions-row {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      gap: 14px;
+      margin-top: 14px;
+      min-height: 0;
+    }
+
+    .session-chip {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .session-chip.live { border-color: var(--red); background: var(--red-dim); }
+    .session-chip.done { opacity: 0.55; }
+
+    .session-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .session-dot.upcoming { background: var(--red); }
+    .session-dot.live { background: var(--red); animation: f1Blink 1s ease-in-out infinite; }
+    .session-dot.done { background: var(--text-dim); }
+
+    .session-date { font-size: 0.875rem; color: var(--text-mid); }
+
+    .session-time {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .session-chip.done .session-time { color: var(--text-dim); }
+
+    .session-live-tag {
+      color: var(--red);
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    .no-sessions {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--text-dim);
+    }
+
+    /* ── Bottom band: calendar · driver standings · constructors ─────── */
+
+    #bottom-band {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .deck-col {
+      display: flex;
+      flex-direction: column;
+      padding: 18px 28px;
+      min-width: 0;
+      min-height: 0;
+    }
+    .deck-col + .deck-col { border-left: 1px solid var(--border); }
+
+    #cal-col { width: 800px; flex-shrink: 0; }
+    #drivers-col, #constructors-col { flex: 1; }
+
+    .deck-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    .deck-season {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    .deck-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .loading-line { color: var(--text-dim); font-size: 0.875rem; padding: 8px 0; }
+
+    /* Calendar rows */
+    .cal-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--hairline);
+      flex: 1;
+      min-height: 0;
+      padding: 0 6px;
+    }
+    .cal-row:last-child { border-bottom: none; }
+    .cal-row.is-next { background: var(--red-dim); border-radius: 10px; border-bottom-color: transparent; }
+
+    .cal-round {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      width: 34px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .cal-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cal-indicator.next { background: var(--red); }
+    .cal-indicator.upcoming { background: var(--text-dim); }
+    .cal-indicator.past { background: rgba(86, 95, 137, 0.4); }
+
+    .cal-name {
+      font-size: 1rem;
+      font-weight: 600;
+      font-style: italic;
+      flex: 1.2;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cal-name.next { color: var(--text); }
+    .cal-name.upcoming { color: var(--text-mid); }
+    .cal-name.past { color: var(--text-dim); }
+
+    .cal-location {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cal-location.next { color: var(--text-mid); }
+
+    .cal-date {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+      text-align: right;
+      min-width: 72px;
+    }
+    .cal-date.next { color: var(--text); font-weight: 600; }
+    .cal-date.upcoming { color: var(--text-mid); }
+    .cal-date.past { color: var(--text-dim); }
+
+    .cal-sprint {
+      background: var(--red-dim);
+      border: 1px solid rgba(255, 24, 1, 0.3);
+      color: var(--red);
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 1px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Standings rows — top 3 step up, the rest hold the floor */
+    .standings-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--hairline);
+      flex: 1;
+      min-height: 0;
+      padding: 0 2px;
+    }
+    .standings-row:last-of-type { border-bottom: none; }
+    .standings-row.podium { flex: 1.35; }
+
+    .st-pos {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      width: 26px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .st-bar { width: 5px; height: 60%; border-radius: 2px; flex-shrink: 0; }
+
+    .st-code {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-style: italic;
+      min-width: 64px;
+      flex-shrink: 0;
+    }
+    .standings-row.podium .st-code { font-size: 1.6rem; min-width: 76px; }
+
+    .st-name {
+      font-size: 0.875rem;
+      color: var(--text-mid);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .st-team-name {
+      font-size: 1rem;
+      font-weight: 600;
+      font-style: italic;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .standings-row.podium .st-team-name { font-size: 1.25rem; }
+
+    .st-wins {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .st-pts {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--red);
+      flex-shrink: 0;
+      min-width: 52px;
+      text-align: right;
+    }
+
+    .more-line {
+      flex-shrink: 0;
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      padding: 6px 2px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="state-overlay">
+    <div class="state-logo">F1</div>
+    <div class="state-text">Initialising Telemetry...</div>
+  </div>
+
+  <!-- Top band: hero + weekend timeline -->
+  <div id="top-band">
+    <div id="hero">
+      <div class="track-svg-wrap" id="track-svg-wrap"></div>
+      <div class="race-title" id="race-title">–</div>
+      <div class="race-meta">
+        <div class="loc-dot"></div>
+        <span id="race-locality">–</span>
+      </div>
+      <div class="race-date-row" id="race-date-row">–</div>
+      <div class="race-round-row">
+        <span id="race-round">–</span>
+        <span id="sprint-badge" class="sprint-badge" style="display:none;">⚡ Sprint Weekend</span>
+      </div>
+
+      <div id="countdown-wrap">
+        <div class="cd-block"><div class="cd-num" id="cd-days">00</div><div class="cd-label">Days</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-block"><div class="cd-num" id="cd-hours">00</div><div class="cd-label">Hours</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-block"><div class="cd-num" id="cd-mins">00</div><div class="cd-label">Mins</div></div>
+      </div>
+
+      <div id="live-wrap" style="display:none;">
+        <div class="live-badge">Race in Progress</div>
+        <div class="live-elapsed" id="live-elapsed">0:00 elapsed</div>
+      </div>
+
+      <div id="finished-wrap" style="display:none;">
+        <div class="finished-flag">🏁</div>
+        <div class="finished-label">Race Finished</div>
+      </div>
+
+      <div class="hero-footer" id="hero-footer">Jolpica F1 API · MotorsportCalendars ICS</div>
+    </div>
+
+    <div id="sessions-zone">
+      <div class="zone-label">Weekend</div>
+      <div id="sessions-row">
+        <div class="no-sessions">Loading sessions...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom band: calendar · drivers · constructors -->
+  <div id="bottom-band">
+    <div class="deck-col" id="cal-col">
+      <div class="deck-head">
+        <div class="zone-label">Season Calendar</div>
+        <div class="deck-season" id="cal-header-season">–</div>
+      </div>
+      <div class="deck-list" id="calendar-list"><div class="loading-line">Loading calendar...</div></div>
+    </div>
+
+    <div class="deck-col" id="drivers-col">
+      <div class="deck-head"><div class="zone-label">Driver Standings</div></div>
+      <div class="deck-list" id="standings-list"><div class="loading-line">Loading standings...</div></div>
+      <div class="more-line" id="drivers-more" hidden></div>
+    </div>
+
+    <div class="deck-col" id="constructors-col">
+      <div class="deck-head"><div class="zone-label">Constructor Standings</div></div>
+      <div class="deck-list" id="constructors-list"><div class="loading-line">Loading standings...</div></div>
+      <div class="more-line" id="constructors-more" hidden></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { xemd, escapeHtml } from '/sdk/widget-sdk.js';
+
+    // Track SVG paths
+    const TRACK_PATHS = {
+      bahrain:       "M30,70 L25,65 L25,60 L30,55 L40,55 L45,50 L55,50 L60,55 L65,50 L75,50 L80,55 L80,65 L75,70 L65,70 L60,75 L50,75 L45,80 L30,80 Z",
+      jeddah:        "M20,20 Q30,15 40,20 T60,30 T80,40 Q85,50 80,60 T60,80 T40,85 Q20,80 20,70 Z",
+      albert_park:   "M30,30 L70,30 L80,40 L70,60 L60,60 L50,70 L40,70 L30,60 Z",
+      suzuka:        "M20,60 C20,40 40,40 50,50 C60,60 80,60 80,40 C80,20 60,20 50,30 C40,40 20,40 20,60 Z",
+      miami:         "M20,50 L30,40 L50,40 L60,30 L70,30 L80,40 L80,60 L70,70 L60,70 L50,80 L40,80 L30,70 L20,70 Z",
+      monaco:        "M40,30 L60,30 L65,40 L60,50 L65,60 L60,70 L50,70 L45,60 L40,60 L35,50 L40,40 Z",
+      villeneuve:    "M20,40 L80,40 L85,50 L80,60 L20,60 L15,50 Z",
+      silverstone:   "M40,20 L60,20 L70,30 L75,50 L70,70 L60,80 L40,80 L30,70 L25,50 L30,30 Z",
+      red_bull_ring: "M30,60 L40,40 L60,40 L70,50 L60,70 L40,70 Z",
+      spa:           "M30,70 L40,60 L50,60 L60,50 L70,50 L80,60 L70,80 L50,80 L30,70 Z",
+      monza:         "M20,50 L80,50 L85,60 L80,70 L20,70 L15,60 Z",
+      marina_bay:    "M20,30 L80,30 L80,70 L60,70 L60,60 L40,60 L40,70 L20,70 Z",
+      americas:      "M20,50 L30,30 L50,30 L60,40 L70,40 L80,50 L70,70 L50,70 L40,60 L30,60 Z",
+      vegas:         "M20,20 L80,20 L80,40 L60,40 L60,60 L80,60 L80,80 L20,80 Z",
+      yas_marina:    "M20,40 L40,40 L40,30 L60,30 L60,40 L80,40 L80,60 L60,60 L60,70 L40,70 L40,60 L20,60 Z",
+      generic:       "M20,50 Q20,20 50,20 T80,50 T50,80 T20,50",
+    };
+
+    // Team colours (data, not decoration)
+    const TEAM_COLORS = {
+      "Red Bull":        "#3671C6",
+      "Ferrari":         "#E8002D",
+      "McLaren":         "#FF8000",
+      "Mercedes":        "#27F4D2",
+      "Aston Martin":    "#229971",
+      "Alpine":          "#FF87BC",
+      "Williams":        "#64C4FF",
+      "RB":              "#6692FF",
+      "RB F1 Team":      "#6692FF",
+      "Kick Sauber":     "#52E252",
+      "Haas F1 Team":    "#B6BABD",
+      "Haas":            "#B6BABD",
+      // 2026 entries
+      "Audi":            "#C0392B",
+      "Cadillac":        "#1565C0",
+    };
+
+    function teamColor(name) {
+      return TEAM_COLORS[name] ?? "#555f89";
+    }
+
+    // Cached data
+    let nextRace             = null;
+    let standings            = null;
+    let constructorStandings = null;
+    let sessions             = null;
+    let allRaces             = [];        // full season schedule from Jolpica
+    let sprintRaces          = new Set(); // race names with sprint weekends (from ICS)
+    let isSprint             = false;
+    let lastUpdated          = null;
+    let refreshStale         = false;
+
+    // Helpers
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function stripGP(name) {
+      return name.replace(/\s*Grand Prix\s*/i, ' GP').trim();
+    }
+
+    function fmtDate(d) {
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function fmtTime(d) {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    function fmtDateShort(d) {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function raceDateTime(race) {
+      if (race.time) return new Date(`${race.date}T${race.time}`);
+      return new Date(`${race.date}T12:00:00Z`);
+    }
+
+    function sessionStatus(dateStart) {
+      const now = Date.now();
+      const start = new Date(dateStart).getTime();
+      const threeHours = 3 * 60 * 60 * 1000;
+      if (start > now) return 'upcoming';
+      if (start > now - threeHours) return 'live';
+      return 'done';
+    }
+
+    function mapSessionName(raw) {
+      if (!raw) return raw;
+      const lower = raw.toLowerCase().trim();
+      if (lower === 'fp1' || lower === 'practice 1') return 'Practice 1';
+      if (lower === 'fp2' || lower === 'practice 2') return 'Practice 2';
+      if (lower === 'fp3' || lower === 'practice 3') return 'Practice 3';
+      if (lower === 'sprint shootout' || lower === 'sprint qualifying') return 'Sprint Quali';
+      if (lower === 'sprint') return 'Sprint Race';
+      if (lower === 'qualifying') return 'Qualifying';
+      if (lower === 'race' || lower === 'grand prix' || lower === 'gp') return 'Race';
+      return raw;
+    }
+
+    // ICS parser
+    function parseICS(text) {
+      // Unfold RFC 5545 folded lines (CRLF + whitespace = continuation)
+      const unfolded = text
+        .replace(/\r\n[ \t]/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+
+      const events = [];
+      const blocks = unfolded.split('BEGIN:VEVENT');
+
+      for (let i = 1; i < blocks.length; i++) {
+        const block = blocks[i];
+        const props = {};
+
+        for (const line of block.split('\n')) {
+          const sep = line.indexOf(':');
+          if (sep < 0) continue;
+          // Strip property parameters (e.g. DTSTART;TZID=UTC → DTSTART)
+          const key = line.substring(0, sep).split(';')[0].toUpperCase();
+          const val = line.substring(sep + 1).trim();
+          if (key && val) props[key] = val;
+        }
+
+        if (!props.DTSTART || !props.SUMMARY) continue;
+
+        // Parse UTC datetime: 20260329T120000Z or 20260329T120000
+        const m = props.DTSTART.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/);
+        if (!m) continue;
+        const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+
+        events.push({
+          summary:  props.SUMMARY,
+          date,
+          location: props.LOCATION || '',
+          status:   props.STATUS   || 'CONFIRMED',
+        });
+      }
+      return events;
+    }
+
+    // Parse one ICS summary into { session, race } or null.
+    // The live feed uses "F1: FP1 (Dutch Grand Prix)"; older exports used
+    // "Formula 1 Dutch Grand Prix 2026 - Practice 1". Accept both — the
+    // exact-format assumption is what silently blanked the schedule zone
+    // for an entire season.
+    function parseSummary(summary, year) {
+      let m = summary.match(/^F1:\s*(.+?)\s*\((.+?)\)\s*$/);
+      if (m) return { session: m[1], race: m[2] };
+      m = summary.match(new RegExp(`^Formula 1\\s+(.+?)\\s+${year}\\s*-\\s*(.+)$`));
+      if (m) return { session: m[2], race: m[1] };
+      return null;
+    }
+
+    function normRace(name) {
+      return String(name).toLowerCase().replace(/\s*grand prix\s*/i, ' ').trim();
+    }
+
+    function sessionsFromICS(icsEvents, raceName, year) {
+      const want = normRace(raceName);
+      return icsEvents
+        .filter(e => e.status !== 'CANCELLED')
+        .map(e => ({ e, p: parseSummary(e.summary, year) }))
+        .filter(({ p }) => p && normRace(p.race) === want)
+        .map(({ e, p }) => ({
+          name:      mapSessionName(p.session),
+          dateStart: e.date.toISOString(),
+        }));
+    }
+
+    // Race names (Jolpica-normalized) that have a sprint session in the ICS.
+    function buildSprintSet(icsEvents, year) {
+      const set = new Set();
+      for (const e of icsEvents) {
+        const p = parseSummary(e.summary, year);
+        if (p && mapSessionName(p.session) === 'Sprint Race') set.add(normRace(p.race));
+      }
+      return set;
+    }
+
+    // Track SVG — flat watermark in the widget accent, heavily dimmed
+    function renderTrackSvg(circuitId) {
+      const path = TRACK_PATHS[circuitId] ?? TRACK_PATHS.generic;
+      return `<svg viewBox="0 0 100 100" fill="none" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <path d="${path}" stroke="rgba(255,24,1,0.22)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+      </svg>`;
+    }
+
+    // Data fetch
+    async function loadData() {
+      // 1. Full season schedule (for calendar + next race)
+      const schedRes = await xemd.proxy.fetch('https://api.jolpi.ca/ergast/f1/current.json');
+      if (!schedRes.ok) throw new Error(`Schedule API: ${schedRes.status}`);
+      const schedJson = await schedRes.json();
+      allRaces = schedJson?.MRData?.RaceTable?.Races ?? [];
+
+      // Find next race: first race where date is today or future
+      const todayStr = new Date().toISOString().slice(0, 10);
+      nextRace = allRaces.find(r => r.date >= todayStr) ?? allRaces[allRaces.length - 1] ?? null;
+
+      // 2. Driver standings
+      const standRes = await xemd.proxy.fetch('https://api.jolpi.ca/ergast/f1/current/driverStandings.json');
+      if (!standRes.ok) throw new Error(`Standings API: ${standRes.status}`);
+      const standJson = await standRes.json();
+      standings = standJson?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings ?? [];
+
+      // 3. Constructor standings
+      const conRes = await xemd.proxy.fetch('https://api.jolpi.ca/ergast/f1/current/constructorStandings.json');
+      if (conRes.ok) {
+        const conJson = await conRes.json();
+        constructorStandings = conJson?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings ?? [];
+      }
+
+      // 4. ICS feed for precise session times + sprint detection
+      sessions = [];
+      sprintRaces = new Set();
+
+      if (nextRace) {
+        const year = nextRace.season ?? new Date().getFullYear();
+        try {
+          const icsRes = await xemd.proxy.fetch(
+            'https://files-f1.motorsportcalendars.com/f1-calendar_p1_p2_p3_qualifying_sprint_gp.ics'
+          );
+          if (icsRes.ok) {
+            const icsText = await icsRes.text();
+            const icsEvents = parseICS(icsText);
+            sprintRaces = buildSprintSet(icsEvents, year);
+            sessions = sessionsFromICS(icsEvents, nextRace.raceName, year);
+          }
+        } catch (_) {
+          // ICS fetch failed — fall through to OpenF1 fallback
+        }
+
+        // Fallback: OpenF1 sessions API if ICS returned nothing.
+        // (country_name is a real OpenF1 filter; the old meeting_number
+        // param does not exist and 404'd every request.)
+        if (sessions.length === 0) {
+          try {
+            const country = nextRace.Circuit?.Location?.country ?? '';
+            const sessRes = await xemd.proxy.fetch(
+              `https://api.openf1.org/v1/sessions?year=${year}&country_name=${encodeURIComponent(country)}`
+            );
+            if (sessRes.ok) {
+              const sessJson = await sessRes.json();
+              if (Array.isArray(sessJson)) {
+                sessions = sessJson.map(s => ({
+                  name:      mapSessionName(s.session_name),
+                  dateStart: s.date_start,
+                }));
+              }
+            }
+          } catch (_) { /* sessions remain empty */ }
+        }
+
+        isSprint = sprintRaces.has(normRace(nextRace.raceName));
+      }
+
+      lastUpdated = new Date();
+      refreshStale = false;
+    }
+
+    // ── Rendering ────────────────────────────────────────────────────────
+
+    function renderHeroFooter() {
+      const el = document.getElementById('hero-footer');
+      const upd = lastUpdated
+        ? ` · updated ${pad2(lastUpdated.getHours())}:${pad2(lastUpdated.getMinutes())}`
+        : '';
+      el.innerHTML = 'Jolpica F1 API · MotorsportCalendars ICS' + escapeHtml(upd) +
+        (refreshStale ? ' <span class="stale">· stale</span>' : '');
+    }
+
+    function renderHero() {
+      if (!nextRace) return;
+
+      const circuit = nextRace.Circuit ?? {};
+      const loc     = circuit.Location ?? {};
+      const circuitId = circuit.circuitId ?? 'generic';
+
+      document.getElementById('track-svg-wrap').innerHTML = renderTrackSvg(circuitId);
+      document.getElementById('race-title').textContent = stripGP(nextRace.raceName ?? '');
+      document.getElementById('race-locality').textContent =
+        `${loc.locality ?? ''}, ${loc.country ?? ''}`;
+
+      const raceTime = raceDateTime(nextRace);
+      document.getElementById('race-date-row').textContent =
+        fmtDate(raceTime) + ' · ' + fmtTime(raceTime) + ' local';
+      document.getElementById('race-round').textContent =
+        `Round ${nextRace.round ?? '–'} · ${nextRace.season ?? ''}`;
+      document.getElementById('sprint-badge').style.display = isSprint ? 'inline-block' : 'none';
+
+      renderHeroFooter();
+      updateCountdown();
+    }
+
+    function updateCountdown() {
+      if (!nextRace) return;
+
+      const raceTime = raceDateTime(nextRace);
+      const now      = Date.now();
+      const diff     = raceTime.getTime() - now;
+
+      const cdWrap   = document.getElementById('countdown-wrap');
+      const liveWrap = document.getElementById('live-wrap');
+      const finWrap  = document.getElementById('finished-wrap');
+
+      const RACE_DURATION = 9000 * 1000; // ~2.5 hours
+      const elapsed = now - raceTime.getTime();
+
+      if (diff > 0) {
+        cdWrap.style.display   = 'flex';
+        liveWrap.style.display = 'none';
+        finWrap.style.display  = 'none';
+
+        const totalSec = Math.floor(diff / 1000);
+        document.getElementById('cd-days').textContent  = pad2(Math.floor(totalSec / 86400));
+        document.getElementById('cd-hours').textContent = pad2(Math.floor((totalSec % 86400) / 3600));
+        document.getElementById('cd-mins').textContent  = pad2(Math.floor((totalSec % 3600) / 60));
+      } else if (elapsed < RACE_DURATION) {
+        cdWrap.style.display   = 'none';
+        liveWrap.style.display = 'flex';
+        finWrap.style.display  = 'none';
+
+        // Real facts only: elapsed clock time, not an invented lap number.
+        const em = Math.floor(elapsed / 60000);
+        document.getElementById('live-elapsed').textContent =
+          `${Math.floor(em / 60)}:${pad2(em % 60)} elapsed`;
+      } else {
+        cdWrap.style.display   = 'none';
+        liveWrap.style.display = 'none';
+        finWrap.style.display  = 'flex';
+      }
+    }
+
+    function renderSessions() {
+      const row = document.getElementById('sessions-row');
+      if (!sessions || sessions.length === 0) {
+        row.innerHTML = '<div class="no-sessions">No session data available for this weekend.</div>';
+        return;
+      }
+
+      const sorted = [...sessions].sort((a, b) =>
+        new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime()
+      );
+
+      row.innerHTML = sorted.map(s => {
+        const status  = sessionStatus(s.dateStart);
+        const d       = new Date(s.dateStart);
+        const liveTag = status === 'live' ? '<span class="session-live-tag">LIVE</span>' : '';
+        return `<div class="session-chip ${status}">
+          <div class="session-name"><span class="session-dot ${status}"></span>${escapeHtml(s.name)} ${liveTag}</div>
+          <div class="session-date">${escapeHtml(fmtDate(d))}</div>
+          <div class="session-time">${escapeHtml(fmtTime(d))}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderStandings() {
+      const list = document.getElementById('standings-list');
+      const more = document.getElementById('drivers-more');
+      if (!standings || standings.length === 0) {
+        list.innerHTML = '<div class="loading-line">No standings data.</div>';
+        more.hidden = true;
+        return;
+      }
+
+      const top10 = standings.slice(0, 10);
+      list.innerHTML = top10.map(entry => {
+        const driver   = entry.Driver ?? {};
+        const team     = entry.Constructors?.[0]?.name ?? '';
+        const color    = teamColor(team);
+        const code     = driver.code ?? (driver.familyName ?? '???').substring(0, 3).toUpperCase();
+        const fullName = `${driver.givenName ?? ''} ${driver.familyName ?? ''}`.trim();
+        const pos      = Number(entry.position ?? 0);
+
+        return `<div class="standings-row${pos >= 1 && pos <= 3 ? ' podium' : ''}">
+          <div class="st-pos">${escapeHtml(String(entry.position ?? '?'))}</div>
+          <div class="st-bar" style="background:${color};"></div>
+          <div class="st-code">${escapeHtml(code)}</div>
+          <div class="st-name">${escapeHtml(fullName)}</div>
+          <div class="st-pts">${escapeHtml(String(entry.points ?? '0'))}</div>
+        </div>`;
+      }).join('');
+
+      // Honest truncation: say what the cut hides instead of hiding the cut.
+      const hidden = standings.length - top10.length;
+      more.hidden = hidden <= 0;
+      if (hidden > 0) more.textContent = `+ ${hidden} more`;
+    }
+
+    function renderConstructors() {
+      const list = document.getElementById('constructors-list');
+      const more = document.getElementById('constructors-more');
+      if (!constructorStandings || constructorStandings.length === 0) {
+        list.innerHTML = '<div class="loading-line">No constructor data.</div>';
+        more.hidden = true;
+        return;
+      }
+
+      const top10 = constructorStandings.slice(0, 10);
+      list.innerHTML = top10.map(entry => {
+        const con   = entry.Constructor ?? {};
+        const color = teamColor(con.name);
+        const pos   = Number(entry.position ?? 0);
+        const wins  = Number(entry.wins ?? 0);
+
+        return `<div class="standings-row${pos >= 1 && pos <= 3 ? ' podium' : ''}">
+          <div class="st-pos">${escapeHtml(String(entry.position ?? '?'))}</div>
+          <div class="st-bar" style="background:${color};"></div>
+          <div class="st-team-name" style="color:${color};">${escapeHtml(con.name ?? '—')}</div>
+          ${wins > 0 ? `<div class="st-wins">${wins}W</div>` : ''}
+          <div class="st-pts">${escapeHtml(String(entry.points ?? '0'))}</div>
+        </div>`;
+      }).join('');
+
+      const hidden = constructorStandings.length - top10.length;
+      more.hidden = hidden <= 0;
+      if (hidden > 0) more.textContent = `+ ${hidden} more`;
+    }
+
+    async function renderCalendar() {
+      const settings     = await xemd.settings.get();
+      const racesToShow  = Math.min(Math.max(Number(settings.racesToShow) || 5, 3), 8);
+      const calList      = document.getElementById('calendar-list');
+      const calHeader    = document.getElementById('cal-header-season');
+
+      if (!allRaces || allRaces.length === 0) {
+        calList.innerHTML = '<div class="loading-line">No calendar data.</div>';
+        return;
+      }
+
+      const season = allRaces[0]?.season ?? new Date().getFullYear();
+      calHeader.textContent = `${season} Season · ${allRaces.length} Rounds`;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const nextIdx = allRaces.findIndex(r => r.date >= todayStr);
+
+      let displayRaces = [];
+      if (nextIdx === -1) {
+        // Season over — show last N races
+        displayRaces = allRaces.slice(-racesToShow);
+      } else {
+        // Window: 1 past race before the next one, filled with upcoming
+        const startIdx = Math.max(0, nextIdx - 1);
+        displayRaces = allRaces.slice(startIdx, startIdx + racesToShow);
+        if (displayRaces.length < racesToShow) {
+          displayRaces = allRaces.slice(Math.max(0, allRaces.length - racesToShow));
+        }
+      }
+
+      calList.innerHTML = displayRaces.map(race => {
+        const raceDate = new Date(`${race.date}T12:00:00Z`);
+        const isPast   = race.date < todayStr;
+        const isNext   = race.date === (nextRace?.date ?? '');
+        const cls      = isNext ? 'next' : (isPast ? 'past' : 'upcoming');
+        const loc      = race.Circuit?.Location ?? {};
+        const sprintTag = sprintRaces.has(normRace(race.raceName))
+          ? `<div class="cal-sprint">Sprint</div>` : '';
+
+        return `<div class="cal-row${isNext ? ' is-next' : ''}">
+          <div class="cal-round">${escapeHtml(String(race.round))}</div>
+          <div class="cal-indicator ${cls}"></div>
+          <div class="cal-name ${cls}">${escapeHtml(stripGP(race.raceName))}</div>
+          <div class="cal-location ${cls}">${escapeHtml(loc.locality ?? '')}, ${escapeHtml(loc.country ?? '')}</div>
+          <div class="cal-date ${cls}">${escapeHtml(fmtDateShort(raceDate))}</div>
+          ${sprintTag}
+        </div>`;
+      }).join('');
+    }
+
+    async function render() {
+      if (!nextRace) {
+        showError('No upcoming race data.');
+        return;
+      }
+      renderHero();
+      renderSessions();
+      renderStandings();
+      renderConstructors();
+      await renderCalendar();
+    }
+
+    // Countdown ticker — 30 s matches the minute-granularity display
+    let countdownTimer = null;
+    function startCountdownTick() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(updateCountdown, 30000);
+    }
+
+    // State helpers
+    function showError(msg) {
+      const overlay = document.getElementById('state-overlay');
+      overlay.querySelector('.state-logo').textContent = '!';
+      overlay.querySelector('.state-logo').style.color = 'var(--text-mid)';
+      overlay.querySelector('.state-text').textContent = msg;
+      overlay.classList.remove('hidden');
+    }
+
+    function hideOverlay() {
+      document.getElementById('state-overlay').classList.add('hidden');
+    }
+
+    // Bootstrap
+    async function init() {
+      try {
+        await loadData();
+      } catch (err) {
+        showError(`Data error: ${err.message}`);
+        xemd.ready();
+        return;
+      }
+
+      await render();
+      startCountdownTick();
+      hideOverlay();
+      xemd.ready();
+    }
+
+    xemd.onRefresh(async () => {
+      try {
+        await loadData();
+        await render();
+      } catch (_) {
+        // Keep stale data visible, but say it's stale.
+        refreshStale = true;
+        renderHeroFooter();
+      }
+    });
+
+    xemd.onSettingsChange(async () => {
+      await renderCalendar();
+    });
+
+    init();
+  </script>
+</body>
+</html>
