@@ -43,7 +43,7 @@ cd vardek-widgets
 ```
 
 The script copies the folder to `~/Library/Application Support/Vardek/widgets/`
-and rescans the running daemon. Then open Admin (`http://127.0.0.1:8137/admin`),
+and rescans the running daemon. Then open Admin (Vardek menu → Open Admin, ⌘A),
 find the widget, and place it.
 
 **Option B — manual:**
