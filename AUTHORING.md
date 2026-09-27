@@ -40,12 +40,12 @@ folder name.
 |-------|----------|-------|
 | `id` | yes | Reverse-DNS, equals folder name. Use your own prefix (e.g. `com.yourname.*`): `com.vardek.*` and `installation.*` are reserved and Vardek won't load them. Official add-ons use `app.vardek.*`. |
 | `name` | yes | Shown in Admin. |
-| `icon` | optional | An emoji shown as the widget's tile icon in Admin (e.g. `"🛰️"`). Omit for a neutral default. |
+| `icon` | optional | An emoji shown as the widget's tile icon in Admin (e.g. `"🛰️"`). Omit for a neutral default. Bundled widgets' icons and emoji are reserved: an add-on can't reuse them (by id suffix or by copying the emoji); Admin ignores such an icon and shows a fallback. |
 | `version` | yes | Semver string. |
 | `entry` | yes | HTML file to load. |
 | `sizes` | yes | Allowed footprints on the 8×2 grid. `cols` 1–8, `rows` 1–2. |
 | `canvas` | optional | Logical px the entry renders at; scaled to the slot. |
-| `subscriptions` | optional | Data channels (`sensors`, `config`, …). `[]` for none. |
+| `subscriptions` | optional | Data channels (`sensors`, `config`). `[]` for none. There is no `media` channel (Now Playing was removed in 1.0.22). |
 | `settingsSchema` | optional | User-editable settings; Admin builds a form from it. Types: `boolean`, `string`, `number`, `enum` (with `values`), `color` (native color picker, value is a `#rrggbb` hex string). |
 | `permissions` | optional | `{ "proxy": ["https://api.example.com/**"], "secrets": ["MY_KEY"] }` — see Network below. |
 | `refreshInterval` | optional | Seconds; fires an `onRefresh` tick. |
@@ -72,8 +72,10 @@ Vardek injects a bridge script at serve time. In your entry file:
 ```
 
 Bridge surface (`Vardek` global): `Vardek.settings`, `Vardek.size`,
-`Vardek.subscribe(channel, cb)`, `Vardek.sendCommand(channel, payload)`,
-`Vardek.onResize(cb)`. The `vardek:ready` event fires once the bridge is live.
+`Vardek.subscribe(channel, cb)`, `Vardek.onResize(cb)`, and
+`Vardek.escapeHtml(str)` (escape text before inserting it as HTML). The
+`vardek:ready` event fires once the bridge is live. `Vardek.sendCommand` is a
+deprecated no-op since 1.0.22 (no channel accepts commands); don't rely on it.
 
 ## HARD CONSTRAINT — no ES modules
 
