@@ -16,7 +16,7 @@ dashboard for the Corsair Xeneon Edge. Get the app first:
 > 4. UniFi Network / Flight Tracker: enter your API key again.
 >
 > Widgets already on your pages switch over automatically and keep their settings.
-> Full steps: [Vardek README — Upgrading](https://github.com/vardekapp/Vardek#upgrading-to-1020).
+> Full steps: [Vardek README — Upgrading](https://github.com/vardekapp/Vardek#upgrading-to-1021).
 
 The Vardek app ships with a curated set of built-in widgets. This repo holds
 **add-on widgets** you can install *after the fact* — no app update, no rebuild.
