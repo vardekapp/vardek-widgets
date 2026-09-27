@@ -4,6 +4,19 @@ Community / add-on widgets for **[Vardek](https://vardek.app)** — the macOS
 dashboard for the Corsair Xeneon Edge. Get the app first:
 [vardekapp/Vardek](https://github.com/vardekapp/Vardek) · [vardek.app](https://vardek.app).
 
+> [!IMPORTANT]
+> **Upgrading to Vardek 1.0.19:** every add-on here was renamed from
+> `com.vardek.<name>` to `app.vardek.<name>`. Old copies no longer load.
+>
+> 1. `git pull` this repo (or clone it fresh).
+> 2. For each add-on you use: `./install-addon.sh app.vardek.<name>`
+>    (removes the old `com.vardek.<name>` copy).
+> 3. In Vardek: **Admin** (⌘A) → **Widgets** → **Rescan**, then **Approve** each add-on.
+> 4. UniFi Network / Flight Tracker: enter your API key again.
+>
+> Widgets already on your pages switch over automatically and keep their settings.
+> Full steps: [Vardek README — Upgrading to 1.0.19](https://github.com/vardekapp/Vardek#upgrading-to-1019).
+
 The Vardek app ships with a curated set of built-in widgets. This repo holds
 **add-on widgets** you can install *after the fact* — no app update, no rebuild.
 Vardek scans a user widgets directory alongside its bundled ones, so dropping a
