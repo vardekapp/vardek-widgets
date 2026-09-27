@@ -43,17 +43,25 @@ cd vardek-widgets
 ```
 
 The script copies the folder to `~/Library/Application Support/Vardek/widgets/`
-and rescans the running daemon. Then open Admin (Vardek menu → Open Admin, ⌘A),
-find the widget, and place it.
+(and removes an old `com.vardek.*` copy of the same add-on). Then open Admin
+(Vardek menu → Open Admin, ⌘A), go to **Widgets**, click **Rescan**, **Approve**
+the add-on, and place it.
 
 **Option B — manual:**
 
 1. In Vardek Admin Widgets panel, click **Open Folder** — this opens
    `~/Library/Application Support/Vardek/widgets/` in Finder.
 2. Copy the widget folder (e.g. `app.vardek.day-night/`) into it.
-3. Click **Rescan**. The widget appears in the library — place it.
+3. Click **Rescan**, then **Approve** the widget. It appears in the library — place it.
 
 Either way: **no app reinstall, no restart.**
+
+**Upgrading to Vardek 1.0.19?** Add-ons were renamed from `com.vardek.*` to
+`app.vardek.*` (Vardek 1.0.18+ reserves `com.vardek.*` for its built-in widgets
+and ignores add-ons that use it). Pull this repo, re-run `./install-addon.sh`
+for each add-on you use, then Rescan and Approve in Admin. Widgets already on
+your pages switch over automatically and keep their settings; UniFi Network and
+Flight Tracker need their API key entered again.
 
 ## Uninstall
 

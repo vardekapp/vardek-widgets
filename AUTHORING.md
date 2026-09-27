@@ -38,7 +38,7 @@ folder name.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `id` | yes | Reverse-DNS, equals folder name. |
+| `id` | yes | Reverse-DNS, equals folder name. Use your own prefix (e.g. `com.yourname.*`): `com.vardek.*` and `installation.*` are reserved and Vardek won't load them. Official add-ons use `app.vardek.*`. |
 | `name` | yes | Shown in Admin. |
 | `icon` | optional | An emoji shown as the widget's tile icon in Admin (e.g. `"🛰️"`). Omit for a neutral default. |
 | `version` | yes | Semver string. |
@@ -113,12 +113,13 @@ iframes), not just the ones your JS calls directly.
 ## Test locally
 
 ```sh
-./install-addon.sh com.yourname.mywidget   # copy to user dir + rescan
+./install-addon.sh com.yourname.mywidget   # copy to user dir, then Rescan in Admin → Widgets
 ```
 
 Edit files, re-run to reinstall, then reload the widget in Admin (toggle it off/on
 or refresh the dashboard) to repaint. After editing a widget already installed,
-the daemon needs a **rescan** to pick up manifest changes.
+click **Rescan** in Admin → Widgets to pick up manifest changes, then approve it
+again (changed files or permissions need a fresh approval).
 
 ## Contributing
 
