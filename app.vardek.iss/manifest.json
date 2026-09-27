@@ -1,0 +1,18 @@
+{
+  "id": "app.vardek.iss",
+  "name": "ISS Tracker",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "icon": "🛰️",
+  "subscriptions": [],
+  "sizes": [ { "cols": 8, "rows": 2 } ],
+  "canvas": { "width": 2560, "height": 720 },
+  "refreshInterval": 3600,
+  "permissions": { "proxy": ["https://api.wheretheiss.at/**"], "secrets": [] },
+  "settingsSchema": {
+    "showLand":       { "type": "boolean", "label": "Show coastlines",       "default": true },
+    "showTrail":      { "type": "boolean", "label": "Show past trail",       "default": true },
+    "showProjection": { "type": "boolean", "label": "Show projected path",   "default": true },
+    "units":          { "type": "enum",    "label": "Units", "default": "km", "values": ["km","mi"] }
+  }
+}

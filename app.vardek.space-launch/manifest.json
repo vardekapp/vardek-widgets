@@ -1,0 +1,14 @@
+{
+  "id": "app.vardek.space-launch",
+  "name": "Space Launch Schedule",
+  "version": "1.0.1",
+  "entry": "index.html",
+  "icon": "🚀",
+  "subscriptions": [],
+  "sizes": [ { "cols": 4, "rows": 2 }, { "cols": 8, "rows": 2 } ],
+  "refreshInterval": 3600,
+  "permissions": { "proxy": ["https://ll.thespacedevs.com/**"], "secrets": [] },
+  "settingsSchema": {
+    "count": { "type": "enum", "label": "Launches shown", "default": "5", "values": ["5","8","12"] }
+  }
+}

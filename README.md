@@ -13,22 +13,22 @@ widget folder in and rescanning is all it takes.
 
 | Widget | id | Size | What it does |
 |--------|----|------|--------------|
-| [Air Quality](com.vardek.air-quality/) | `com.vardek.air-quality` | 8×2 / 4×2 | Radial gauge HUD for any city's air quality — hero US/EU AQI ring with up to 10 user-picked pollutant/pollen mini-gauges orbiting it on tone-colored spokes (Open-Meteo, keyless). |
-| [CISA Known Exploited Vulnerabilities](com.vardek.cisa-kev/) | `com.vardek.cisa-kev` | 8×2 | Wire-bulletin feed of actively-exploited CVEs from CISA's KEV catalog — due-date urgency, ransomware-flagged RUSH stamps, tap a bulletin for its NVD record (CISA, keyless). |
-| [Day/Night Map](com.vardek.day-night/) | `com.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
-| [Earthquake Monitor](com.vardek.earthquake/) | `com.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
-| [F1 Schedule](com.vardek.f1-schedule/) | `com.vardek.f1-schedule` | 8×2 | Formula 1 next race, standings, and calendar (Jolpica / OpenF1 / MotorsportCalendars, keyless). |
-| [Flight Tracker](com.vardek.flight-tracker/) | `com.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
-| [ISS Tracker](com.vardek.iss/) | `com.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
-| [LCD Watch](com.vardek.lcd-watch/) | `com.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
-| [Life Progress](com.vardek.life-progress/) | `com.vardek.life-progress` | 8×2 / 4×2 | Horizontal progress bars — life, year, month, week, day. Pure client-side, no network. |
-| [London Tube](com.vardek.london-tube/) | `com.vardek.london-tube` | 8×2 / 4×2 | Live London Underground/DLR/Elizabeth line arrivals and line status for a chosen station, with a walking-buffer offset and direction/line filters (TfL Unified API, keyless). |
-| [Nixie Clock](com.vardek.nixie-clock/) | `com.vardek.nixie-clock` | 8×2 / 4×2 | Glowing nixie-tube-style clock (HH:MM:SS) with a tube-style date line, ghost-digit outlines, warm flicker, and a user-pickable glow color. Local clock, no network. |
-| [On This Day](com.vardek.otd/) | `com.vardek.otd` | 8×2 | Gallery wall of Wikipedia's "on this day" history — 16-card paged grid of events, births, deaths, and holidays, category-toggled, tap any card to open its article (Wikipedia REST API, keyless). |
-| [Picture of the Day](com.vardek.potd/) | `com.vardek.potd` | 8×2 | Darkroom contact-sheet frame for Wikipedia's daily featured photo — headline, photographer credit, license, and caption in a proof-sheet column, tap to open full resolution on Commons (Wikipedia REST API, keyless). |
-| [Space Launch Schedule](com.vardek.space-launch/) | `com.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
-| [UniFi Network](com.vardek.unifi/) | `com.vardek.unifi` | 8×2 | Ubiquiti UniFi network stats from the UniFi Site Manager API (`api.ui.com`). Requires your own `UNIFI_KEY`. |
-| [World Clocks](com.vardek.world-clocks/) | `com.vardek.world-clocks` | 8×2 / 4×2 | Newsroom-style wall of 2-4 analog clocks (white face, black hands, red sweep) with city labels and time-difference offsets. Local clock, no network. |
+| [Air Quality](app.vardek.air-quality/) | `app.vardek.air-quality` | 8×2 / 4×2 | Radial gauge HUD for any city's air quality — hero US/EU AQI ring with up to 10 user-picked pollutant/pollen mini-gauges orbiting it on tone-colored spokes (Open-Meteo, keyless). |
+| [CISA Known Exploited Vulnerabilities](app.vardek.cisa-kev/) | `app.vardek.cisa-kev` | 8×2 | Wire-bulletin feed of actively-exploited CVEs from CISA's KEV catalog — due-date urgency, ransomware-flagged RUSH stamps, tap a bulletin for its NVD record (CISA, keyless). |
+| [Day/Night Map](app.vardek.day-night/) | `app.vardek.day-night` | 8×2 | World map with a live day/night terminator and UTC-offset time ticks. Pure client-side solar math, no network. |
+| [Earthquake Monitor](app.vardek.earthquake/) | `app.vardek.earthquake` | 8×2 | World map of recent quakes, colored by magnitude — tap a quake for details (USGS, keyless). |
+| [F1 Schedule](app.vardek.f1-schedule/) | `app.vardek.f1-schedule` | 8×2 | Formula 1 next race, standings, and calendar (Jolpica / OpenF1 / MotorsportCalendars, keyless). |
+| [Flight Tracker](app.vardek.flight-tracker/) | `app.vardek.flight-tracker` | 8×2 | Tracks up to 4 flights, laid out to fill the panel by count — route with live progress, times, aircraft, live altitude/speed/heading (AeroDataBox, requires your own API key). |
+| [ISS Tracker](app.vardek.iss/) | `app.vardek.iss` | 8×2 | Standalone world map with the ISS's live position, trail, and projected orbit — accurate SGP4 from a keyless TLE feed (wheretheiss.at). |
+| [LCD Watch](app.vardek.lcd-watch/) | `app.vardek.lcd-watch` | 4×2 / 2×1 | Retro Casio F-91W–style digital clock — seven-segment time/date with ghost segments, blinking colon, backlight toggle. Local clock, no network. |
+| [Life Progress](app.vardek.life-progress/) | `app.vardek.life-progress` | 8×2 / 4×2 | Horizontal progress bars — life, year, month, week, day. Pure client-side, no network. |
+| [London Tube](app.vardek.london-tube/) | `app.vardek.london-tube` | 8×2 / 4×2 | Live London Underground/DLR/Elizabeth line arrivals and line status for a chosen station, with a walking-buffer offset and direction/line filters (TfL Unified API, keyless). |
+| [Nixie Clock](app.vardek.nixie-clock/) | `app.vardek.nixie-clock` | 8×2 / 4×2 | Glowing nixie-tube-style clock (HH:MM:SS) with a tube-style date line, ghost-digit outlines, warm flicker, and a user-pickable glow color. Local clock, no network. |
+| [On This Day](app.vardek.otd/) | `app.vardek.otd` | 8×2 | Gallery wall of Wikipedia's "on this day" history — 16-card paged grid of events, births, deaths, and holidays, category-toggled, tap any card to open its article (Wikipedia REST API, keyless). |
+| [Picture of the Day](app.vardek.potd/) | `app.vardek.potd` | 8×2 | Darkroom contact-sheet frame for Wikipedia's daily featured photo — headline, photographer credit, license, and caption in a proof-sheet column, tap to open full resolution on Commons (Wikipedia REST API, keyless). |
+| [Space Launch Schedule](app.vardek.space-launch/) | `app.vardek.space-launch` | 4×2 / 8×2 | Upcoming rocket launches with color-coded live countdowns (Launch Library 2, keyless). |
+| [UniFi Network](app.vardek.unifi/) | `app.vardek.unifi` | 8×2 | Ubiquiti UniFi network stats from the UniFi Site Manager API (`api.ui.com`). Requires your own `UNIFI_KEY`. |
+| [World Clocks](app.vardek.world-clocks/) | `app.vardek.world-clocks` | 8×2 / 4×2 | Newsroom-style wall of 2-4 analog clocks (white face, black hands, red sweep) with city labels and time-difference offsets. Local clock, no network. |
 
 Screenshots live in each widget's own folder/README — click through above.
 
@@ -39,7 +39,7 @@ Screenshots live in each widget's own folder/README — click through above.
 ```sh
 git clone https://github.com/vardekapp/vardek-widgets
 cd vardek-widgets
-./install-addon.sh com.vardek.day-night
+./install-addon.sh app.vardek.day-night
 ```
 
 The script copies the folder to `~/Library/Application Support/Vardek/widgets/`
@@ -50,7 +50,7 @@ find the widget, and place it.
 
 1. In Vardek Admin Widgets panel, click **Open Folder** — this opens
    `~/Library/Application Support/Vardek/widgets/` in Finder.
-2. Copy the widget folder (e.g. `com.vardek.day-night/`) into it.
+2. Copy the widget folder (e.g. `app.vardek.day-night/`) into it.
 3. Click **Rescan**. The widget appears in the library — place it.
 
 Either way: **no app reinstall, no restart.**
