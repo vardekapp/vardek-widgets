@@ -5,8 +5,9 @@ dashboard for the Corsair Xeneon Edge. Get the app first:
 [vardekapp/Vardek](https://github.com/vardekapp/Vardek) · [vardek.app](https://vardek.app).
 
 > [!IMPORTANT]
-> **Upgrading to Vardek 1.0.19:** every add-on here was renamed from
-> `com.vardek.<name>` to `app.vardek.<name>`. Old copies no longer load.
+> **Upgrading from Vardek 1.0.18 or earlier (to 1.0.19 or later):** every add-on
+> here was renamed from `com.vardek.<name>` to `app.vardek.<name>`. Old copies no
+> longer load.
 >
 > 1. `git pull` this repo (or clone it fresh).
 > 2. For each add-on you use: `./install-addon.sh app.vardek.<name>`
@@ -15,7 +16,7 @@ dashboard for the Corsair Xeneon Edge. Get the app first:
 > 4. UniFi Network / Flight Tracker: enter your API key again.
 >
 > Widgets already on your pages switch over automatically and keep their settings.
-> Full steps: [Vardek README — Upgrading to 1.0.19](https://github.com/vardekapp/Vardek#upgrading-to-1019).
+> Full steps: [Vardek README — Upgrading](https://github.com/vardekapp/Vardek#upgrading-to-1020).
 
 The Vardek app ships with a curated set of built-in widgets. This repo holds
 **add-on widgets** you can install *after the fact* — no app update, no rebuild.
@@ -69,7 +70,7 @@ the add-on, and place it.
 
 Either way: **no app reinstall, no restart.**
 
-**Upgrading to Vardek 1.0.19?** Add-ons were renamed from `com.vardek.*` to
+**Upgrading from Vardek 1.0.18 or earlier?** Add-ons were renamed from `com.vardek.*` to
 `app.vardek.*` (Vardek 1.0.18+ reserves `com.vardek.*` for its built-in widgets
 and ignores add-ons that use it). Pull this repo, re-run `./install-addon.sh`
 for each add-on you use, then Rescan and Approve in Admin. Widgets already on
