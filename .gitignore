@@ -1,0 +1,9 @@
+.DS_Store
+
+# Agent scratch space. Briefs and reports here cite absolute local paths, so
+# they must never be published from this repo. A nested .gitignore inside
+# .superpowers/sdd/ already covers that one subdirectory; this covers the tree.
+.superpowers/
+
+# Build output, if a widget ever produces any.
+dist/
