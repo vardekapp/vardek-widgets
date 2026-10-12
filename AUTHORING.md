@@ -54,6 +54,28 @@ The grid is **8 columns × 2 rows**. Full panel = `{ "cols": 8, "rows": 2 }` at
 canvas `2560 × 720` (the Xeneon Edge). Invalid manifests are skipped with a
 reason in Admin — never fatal.
 
+### Sizes in pixels
+
+On the 2560 × 720 Xeneon Edge with the default 8 px gutter, a slot is this many
+pixels (`Vardek.size` reports the real values at run time, and they change with
+the display and the gutter):
+
+| Span | Pixels | | Span | Pixels |
+|------|--------|-|------|--------|
+| 1×1 | 311 × 348 | | 1×2 | 311 × 704 |
+| 2×1 | 630 × 348 | | 2×2 | 630 × 704 |
+| 3×1 | 949 × 348 | | 3×2 | 949 × 704 |
+| 4×1 | 1268 × 348 | | 4×2 | 1268 × 704 |
+| 6×1 | 1906 × 348 | | 6×2 | 1906 × 704 |
+| 8×1 | 2544 × 348 | | 8×2 | 2544 × 704 |
+
+Porting from iCUE: Corsair documents Xeneon Edge slots from Small
+(840 × 344) to Extra Large (2536 × 696). The closest Vardek spans are **3×1**
+for Small and **8×2** for Extra Large. Corsair publishes the sizes in between
+in [its widget docs](https://docs.elgato.com/icue/widgets/); match each to the
+nearest span from the table. Write widgets responsively (percentages, flex or
+grid, `Vardek.onResize`) rather than for one fixed size.
+
 ## Runtime bridge
 
 Vardek injects a bridge script at serve time. In your entry file:
@@ -111,6 +133,29 @@ Forgetting the second host doesn't error on the fetch; the `<img>` just gets
 silently blocked by CSP, which looks exactly like a network/proxy failure.
 Check every host your rendered HTML actually loads from (fonts, images,
 iframes), not just the ones your JS calls directly.
+
+## Quality bar
+
+A widget is read at a glance from across a desk, on a touchscreen that may be
+off-screen on another page. Before you open a PR:
+
+- **Glanceable.** One main reading or idea, large type, nothing that needs
+  squinting. Test at the smallest size you declare.
+- **Every state is designed.** Draw the loading state, the error state (say what
+  failed and what to do) and the offline or "no data yet" state. A blank widget is
+  a bug. If a required key is unset, the proxy answers 412 `secret not set`;
+  show a clear "enter your key" message instead of a generic error.
+- **Responsive.** Fill the slot at every size in `sizes`. Either declare a
+  `canvas` (Vardek scales it to the slot) or re-layout in `Vardek.onResize`. Don't
+  hard-code pixel sizes that assume one slot.
+- **Touch-sized.** Targets of at least about 44 px. The touch driver sends one
+  finger only, so don't rely on pinch, two-finger scroll or hover.
+- **Cheap when hidden.** Stop timers and polling when you don't need them;
+  widgets on other pages are throttled.
+- **Tested on the panel.** Run it on a real Xeneon Edge, or in a 2560 × 720
+  window, at each declared size, not just in a browser tab.
+- **Honest permissions.** Declare only the hosts your markup and JS load from
+  (including image and font hosts) and only the secrets you read.
 
 ## Test locally
 
