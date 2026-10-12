@@ -37,10 +37,12 @@ equal the folder name. No build step, no framework, no dependencies.
 
 1. Draw the loading, error and offline states, and check each declared size.
 2. Walk the "Quality bar" list in `AUTHORING.md`.
-3. Install it with `./install-addon.sh <folder-name>`, **Rescan** in Admin →
+3. Run `node validate.mjs --strict <folder>` and fix everything it reports. It
+   enforces the same id, secret-key and proxy rules as the app.
+4. Install it with `./install-addon.sh <folder-name>`, **Rescan** in Admin →
    Widgets, approve it, and look at it. A widget that has only been read, not run,
    is not finished.
-4. Do not add runtime dependencies, build steps or network calls to the app side;
+5. Do not add runtime dependencies, build steps or network calls to the app side;
    this repo only contains widgets.
 
 ## Git

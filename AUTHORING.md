@@ -113,7 +113,9 @@ widget renders blank. Use **classic** scripts:
 
 Classic scripts run in document order, so a later `<script>` sees globals set by
 earlier ones. Expose shared helpers on `globalThis`. (Inline `<script>` is fine;
-just avoid `type="module"`.)
+just avoid `type="module"`. `validate.mjs` reports an external module script as an
+error. An inline module script that imports nothing does run, but classic scripts
+are the supported path.)
 
 ## Network
 
@@ -157,6 +159,26 @@ off-screen on another page. Before you open a PR:
 - **Honest permissions.** Declare only the hosts your markup and JS load from
   (including image and font hosts) and only the secrets you read.
 
+## Validate
+
+Run the validator before you install or submit. It needs only Node 18+, no install:
+
+```sh
+node validate.mjs com.yourname.mywidget      # one folder
+node validate.mjs --strict app.vardek.*      # several; warnings fail too
+```
+
+**Errors** are things Vardek refuses to load or the docs require: a bad or reserved
+`id`, an id that differs from the folder name, bad `sizes`, an entry that is missing or
+escapes the folder, a malformed `permissions.proxy` host or `permissions.secrets` key,
+a bad `settingsSchema` field, symbolic or hard links, and files over the size limits
+(10 MiB each, 50 MiB total, 1,024 files). **Warnings** are things that usually break a
+widget at run time: a host your markup loads from that isn't in `permissions.proxy`,
+browser storage, audio, `eval`, ES module syntax, a data widget with no visible error
+state, and an unreferenced secret. The id, secret-key and proxy rules are the same ones
+the app enforces; shared test cases keep the two in step. CI runs `--strict` on every
+widget folder in this repo.
+
 ## Test locally
 
 ```sh
@@ -171,4 +193,5 @@ again (changed files or permissions need a fresh approval).
 ## Contributing
 
 Open a PR adding your `com.yourname.widget/` folder and a row in the README table.
+`node validate.mjs --strict com.yourname.widget` must pass; CI checks it.
 Keep widgets self-contained and dependency-free where possible.
