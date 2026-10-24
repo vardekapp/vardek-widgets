@@ -13,7 +13,6 @@
 // that run the shared cases in widget-rules.json against both, so they cannot drift silently.
 
 import fs from "node:fs";
-import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,25 +57,21 @@ export function proxyOrigin(pattern) {
   const slash = rest.indexOf("/");
   const authority = slash < 0 ? rest : rest.slice(0, slash);
   if (!authority) return null;
-  let port = null;
-  if (authority.startsWith("[")) {
-    const end = authority.indexOf("]");
-    if (end < 0 || !net.isIPv6(authority.slice(1, end))) return null;
-    const suffix = authority.slice(end + 1);
-    if (suffix && !suffix.startsWith(":")) return null;
-    port = suffix ? suffix.slice(1) : null;
-  } else {
-    const parts = authority.split(":");
-    if (parts.length > 2) return null;
-    port = parts.length === 2 ? parts[1] : null;
-    const host = parts[0];
-    const domain = host.startsWith("*.") ? host.slice(2) : host;
-    const labels = domain.split(".");
-    const ok = domain.length <= 253 && labels.every((label) =>
-      label.length > 0 && label.length <= 63 && /^[A-Za-z0-9]/.test(label)
-      && /[A-Za-z0-9]$/.test(label) && /^[A-Za-z0-9-]+$/.test(label));
-    if (!ok) return null;
-  }
+  // Names only: an IP literal, a single-label or local-only name, or a wildcard over a whole TLD
+  // would reach CSP connect-src and let the widget bypass the proxy's SSRF checks.
+  if (authority.startsWith("[")) return null;
+  const parts = authority.split(":");
+  if (parts.length > 2) return null;
+  const port = parts.length === 2 ? parts[1] : null;
+  const host = parts[0];
+  const domain = host.startsWith("*.") ? host.slice(2) : host;
+  const labels = domain.split(".");
+  const ok = domain.length <= 253 && labels.length >= 2 && labels.every((label) =>
+    label.length > 0 && label.length <= 63 && /^[A-Za-z0-9]/.test(label)
+    && /[A-Za-z0-9]$/.test(label) && /^[A-Za-z0-9-]+$/.test(label));
+  if (!ok) return null;
+  const tld = labels[labels.length - 1].toLowerCase();
+  if (/^[0-9]+$/.test(tld) || tld === "local" || tld === "localhost") return null;
   if (port !== null) {
     if (!/^[0-9]+$/.test(port)) return null;
     const n = Number(port);
